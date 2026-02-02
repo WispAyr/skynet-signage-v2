@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alert Display</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Alert colors */
+      --alert-info: #0077B6;
+      --alert-info-bg: #0c4a6e;
+      --alert-warning: #F59E0B;
+      --alert-warning-bg: #78350f;
+      --alert-error: #EF4444;
+      --alert-error-bg: #7f1d1d;
+      --alert-success: #22C55E;
+      --alert-success-bg: #14532d;
+      
+      --lc-teal: #4ECDC4;
+      --text-primary: #ffffff;
+      --text-secondary: #e2e8f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* Alert types - base styling */
+    body.info { background: var(--alert-info-bg); }
+    body.warning { background: var(--alert-warning-bg); }
+    body.error { background: var(--alert-error-bg); }
+    body.success { background: var(--alert-success-bg); }
+
+    /* Animated background pulse */
+    .bg-pulse {
+      position: fixed;
+      inset: 0;
+      opacity: 0.3;
+      animation: bgPulse 2s ease-in-out infinite;
+    }
+
+    body.info .bg-pulse { background: var(--alert-info); }
+    body.warning .bg-pulse { background: var(--alert-warning); }
+    body.error .bg-pulse { background: var(--alert-error); }
+    body.success .bg-pulse { background: var(--alert-success); }
+
+    @keyframes bgPulse {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Warning stripes for critical alerts */
+    body.error .warning-stripes {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+      background: repeating-linear-gradient(
+        45deg,
+        var(--alert-error) 0px,
+        var(--alert-error) 20px,
+        #000 20px,
+        #000 40px
+      );
+      animation: stripeMove 1s linear infinite;
+    }
+
+    body.error .warning-stripes.bottom {
+      top: auto;
+      bottom: 0;
+      animation-direction: reverse;
+    }
+
+    @keyframes stripeMove {
+      0% { background-position: 0 0; }
+      100% { background-position: 56px 0; }
+    }
+
+    /* Main container */
+    .alert-container {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 60px 80px;
+      max-width: 1200px;
+    }
+
+    /* Alert icon */
+    .alert-icon {
+      font-size: 120px;
+      margin-bottom: 32px;
+      animation: iconBounce 1s ease-in-out infinite;
+    }
+
+    @keyframes iconBounce {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+
+    /* Alert badge */
+    .alert-badge {
+      display: inline-block;
+      padding: 8px 24px;
+      border-radius: 30px;
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      margin-bottom: 24px;
+    }
+
+    body.info .alert-badge { background: var(--alert-info); color: white; }
+    body.warning .alert-badge { background: var(--alert-warning); color: black; }
+    body.error .alert-badge { background: var(--alert-error); color: white; animation: badgePulse 0.5s ease-in-out infinite; }
+    body.success .alert-badge { background: var(--alert-success); color: white; }
+
+    @keyframes badgePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    /* Alert title */
+    .alert-title {
+      font-size: 64px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin-bottom: 24px;
+      line-height: 1.2;
+      text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Alert message */
+    .alert-message {
+      font-size: 28px;
+      font-weight: 400;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      max-width: 800px;
+      margin: 0 auto 40px;
+    }
+
+    /* Alert details */
+    .alert-details {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      padding: 24px 40px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 16px;
+      margin-bottom: 32px;
+    }
+
+    .detail-item {
+      text-align: center;
+    }
+
+    .detail-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    /* Action button */
+    .alert-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 40px;
+      background: white;
+      color: #1a1a1a;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 50px;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .alert-action:hover {
+      transform: scale(1.05);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Timestamp */
+    .alert-timestamp {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Branding */
+    .branding {
+      position: fixed;
+      top: 40px;
+      right: 40px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .brand-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--lc-teal);
+    }
+
+    /* LCARS corner */
+    .lcars-corner {
+      position: fixed;
+      width: 120px;
+      height: 120px;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .lcars-corner.top-left {
+      top: 30px;
+      left: 30px;
+      border-right: none;
+      border-bottom: none;
+      border-radius: 30px 0 0 0;
+    }
+
+    .lcars-corner.bottom-right {
+      bottom: 30px;
+      right: 30px;
+      border-left: none;
+      border-top: none;
+      border-radius: 0 0 30px 0;
+    }
+
+    /* Sound indicator */
+    .sound-waves {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin-top: 20px;
+    }
+
+    .wave {
+      width: 4px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 2px;
+      animation: wave 1s ease-in-out infinite;
+    }
+
+    .wave:nth-child(1) { animation-delay: 0s; }
+    .wave:nth-child(2) { animation-delay: 0.1s; }
+    .wave:nth-child(3) { animation-delay: 0.2s; }
+    .wave:nth-child(4) { animation-delay: 0.3s; }
+    .wave:nth-child(5) { animation-delay: 0.2s; }
+    .wave:nth-child(6) { animation-delay: 0.1s; }
+
+    @keyframes wave {
+      0%, 100% { height: 10px; }
+      50% { height: 30px; }
+    }
+  </style>
+</head>
+<body class="error">
+  <div class="bg-pulse"></div>
+  <div class="warning-stripes"></div>
+  <div class="warning-stripes bottom"></div>
+  
+  <div class="lcars-corner top-left"></div>
+  <div class="lcars-corner bottom-right"></div>
+
+  <div class="branding">
+    <span class="brand-dot"></span>
+    <span>SKYNET ALERT SYSTEM</span>
+  </div>
+
+  <div class="alert-container">
+    <div class="alert-icon" id="alertIcon">⚠️</div>
+    <div class="alert-badge" id="alertBadge">Critical Alert</div>
+    
+    <h1 class="alert-title" id="alertTitle">System Alert</h1>
+    <p class="alert-message" id="alertMessage">This is an important notification that requires your immediate attention.</p>
+    
+    <div class="alert-details">
+      <div class="detail-item">
+        <div class="detail-label">Location</div>
+        <div class="detail-value" id="alertLocation">Kyle Rise</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Time</div>
+        <div class="detail-value" id="alertTime">14:32:15</div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Priority</div>
+        <div class="detail-value" id="alertPriority">HIGH</div>
+      </div>
+    </div>
+
+    <div class="sound-waves">
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+      <div class="wave"></div>
+    </div>
+  </div>
+
+  <div class="alert-timestamp" id="timestamp">Issued: --:--:--</div>
+
+  <script>
+    // Parse URL params for alert configuration
+    const params = new URLSearchParams(window.location.search);
+    const level = params.get('level') || 'error';
+    const title = params.get('title') || 'System Alert';
+    const message = params.get('message') || 'This is an important notification.';
+    const location = params.get('location') || 'All Sites';
+    const priority = params.get('priority') || 'HIGH';
+
+    // Set alert level class
+    document.body.className = level;
+
+    // Set content
+    document.getElementById('alertTitle').textContent = title;
+    document.getElementById('alertMessage').textContent = message;
+    document.getElementById('alertLocation').textContent = location;
+    document.getElementById('alertPriority').textContent = priority;
+
+    // Set icon and badge based on level
+    const icons = {
+      info: 'ℹ️',
+      warning: '⚠️',
+      error: '🚨',
+      success: '✅'
+    };
+    const badges = {
+      info: 'Information',
+      warning: 'Warning',
+      error: 'Critical Alert',
+      success: 'Success'
+    };
+
+    document.getElementById('alertIcon').textContent = icons[level] || '⚠️';
+    document.getElementById('alertBadge').textContent = badges[level] || 'Alert';
+
+    // Hide warning stripes for non-error alerts
+    if (level !== 'error') {
+      document.querySelectorAll('.warning-stripes').forEach(el => el.style.display = 'none');
+    }
+
+    // Update timestamp
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('alertTime').textContent = now.toLocaleTimeString('en-GB');
+      document.getElementById('timestamp').textContent = 'Issued: ' + now.toLocaleTimeString('en-GB');
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+  </script>
+</body>
+</html>

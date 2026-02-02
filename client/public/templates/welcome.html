@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome - ParkWise & Local Connect</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* ParkWise */
+      --pw-green: #22C55E;
+      --pw-blue: #0077B6;
+      --pw-navy: #1E3A5F;
+      --pw-orange: #F97316;
+      
+      /* Local Connect */
+      --lc-teal: #4ECDC4;
+      --lc-cyan: #48CAE4;
+      --lc-green: #7DD87D;
+      
+      /* Dark theme */
+      --bg-dark: #0a0f1a;
+      --bg-panel: #111827;
+      --border-glow: rgba(78, 205, 196, 0.3);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* LCARS-style corner decorations */
+    .lcars-corner {
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border: 3px solid var(--lc-teal);
+    }
+
+    .lcars-corner.top-left {
+      top: 20px;
+      left: 20px;
+      border-right: none;
+      border-bottom: none;
+      border-radius: 30px 0 0 0;
+    }
+
+    .lcars-corner.top-right {
+      top: 20px;
+      right: 20px;
+      border-left: none;
+      border-bottom: none;
+      border-radius: 0 30px 0 0;
+    }
+
+    .lcars-corner.bottom-left {
+      bottom: 20px;
+      left: 20px;
+      border-right: none;
+      border-top: none;
+      border-radius: 0 0 0 30px;
+    }
+
+    .lcars-corner.bottom-right {
+      bottom: 20px;
+      right: 20px;
+      border-left: none;
+      border-top: none;
+      border-radius: 0 0 30px 0;
+    }
+
+    /* Animated gradient background */
+    .bg-gradient {
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(78, 205, 196, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(0, 119, 182, 0.08) 0%, transparent 60%);
+      animation: gradientPulse 8s ease-in-out infinite;
+    }
+
+    @keyframes gradientPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 60px;
+    }
+
+    /* Logo section */
+    .logos {
+      display: flex;
+      align-items: center;
+      gap: 60px;
+      margin-bottom: 60px;
+    }
+
+    .logo-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .logo-icon {
+      width: 120px;
+      height: 120px;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      font-weight: 700;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .logo-icon::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+    }
+
+    .logo-pw {
+      background: linear-gradient(135deg, var(--pw-green) 0%, var(--pw-blue) 100%);
+    }
+
+    .logo-lc {
+      background: linear-gradient(135deg, var(--lc-teal) 0%, var(--lc-cyan) 100%);
+    }
+
+    .logo-text {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+    }
+
+    .divider {
+      height: 100px;
+      width: 2px;
+      background: linear-gradient(180deg, transparent, var(--lc-teal), transparent);
+    }
+
+    /* Main welcome text */
+    .welcome-text {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .welcome-text h1 {
+      font-size: 72px;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      margin-bottom: 16px;
+      background: linear-gradient(90deg, var(--lc-teal), var(--pw-green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .welcome-text p {
+      font-size: 28px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    /* Taglines */
+    .taglines {
+      display: flex;
+      gap: 80px;
+      margin-top: 20px;
+    }
+
+    .tagline {
+      text-align: center;
+      padding: 24px 40px;
+      background: var(--bg-panel);
+      border-radius: 16px;
+      border: 1px solid var(--border-glow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tagline::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--pw-green), var(--lc-teal));
+    }
+
+    .tagline h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--lc-teal);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 8px;
+    }
+
+    .tagline p {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    /* Status bar */
+    .status-bar {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 32px;
+      padding: 16px 32px;
+      background: rgba(17, 24, 39, 0.8);
+      border-radius: 50px;
+      border: 1px solid var(--border-glow);
+    }
+
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--pw-green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.2); }
+    }
+
+    .time {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+  
+  <div class="lcars-corner top-left"></div>
+  <div class="lcars-corner top-right"></div>
+  <div class="lcars-corner bottom-left"></div>
+  <div class="lcars-corner bottom-right"></div>
+
+  <div class="container">
+    <div class="logos">
+      <div class="logo-wrapper">
+        <div class="logo-icon logo-pw">PW</div>
+        <span class="logo-text">PARKWISE</span>
+      </div>
+      <div class="divider"></div>
+      <div class="logo-wrapper">
+        <div class="logo-icon logo-lc">LC</div>
+        <span class="logo-text">LOCAL CONNECT</span>
+      </div>
+    </div>
+
+    <div class="welcome-text">
+      <h1>WELCOME</h1>
+      <p>Technology. Innovation. Community.</p>
+    </div>
+
+    <div class="taglines">
+      <div class="tagline">
+        <h3>ParkWise</h3>
+        <p>Park smarter, not harder</p>
+      </div>
+      <div class="tagline">
+        <h3>Local Connect</h3>
+        <p>Connecting People, Place, and Story</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="status-item">
+      <span class="status-dot"></span>
+      <span>Systems Online</span>
+    </div>
+    <div class="status-item">
+      <span class="time" id="clock">--:--</span>
+    </div>
+    <div class="status-item">
+      <span id="date">Loading...</span>
+    </div>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      const date = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+      document.getElementById('clock').textContent = time;
+      document.getElementById('date').textContent = date;
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>

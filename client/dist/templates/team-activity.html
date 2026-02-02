@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Activity Timeline - Skynet HQ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pw-green: #22C55E;
+      --pw-blue: #0077B6;
+      --pw-navy: #1E3A5F;
+      --pw-orange: #F97316;
+      --pw-red: #EF4444;
+      --pw-amber: #F59E0B;
+      --pw-purple: #8B5CF6;
+      
+      --lc-teal: #4ECDC4;
+      --lc-cyan: #48CAE4;
+      
+      --bg-dark: #0a0f1a;
+      --bg-panel: #111827;
+      --bg-card: #1f2937;
+      --border-glow: rgba(78, 205, 196, 0.3);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* LCARS sidebar */
+    .lcars-sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      background: linear-gradient(180deg, var(--lc-teal), var(--pw-green), var(--lc-cyan));
+      display: flex;
+      flex-direction: column;
+    }
+
+    .lcars-top {
+      height: 120px;
+      background: var(--bg-dark);
+      border-radius: 0 0 40px 0;
+    }
+
+    .lcars-middle {
+      flex: 1;
+      position: relative;
+    }
+
+    .lcars-middle::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 20px;
+      background: var(--bg-dark);
+    }
+
+    .lcars-bottom {
+      height: 80px;
+      background: var(--bg-dark);
+      border-radius: 0 40px 0 0;
+    }
+
+    /* Main content */
+    .main-content {
+      margin-left: 80px;
+      padding: 32px 40px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      color: var(--lc-teal);
+    }
+
+    .header h1 span {
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .monday-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .monday-status.connected .status-dot { background: var(--pw-green); }
+    .monday-status.disconnected .status-dot { background: var(--pw-red); }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .time-block {
+      text-align: right;
+    }
+
+    .time-block .time {
+      font-size: 32px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--pw-green);
+    }
+
+    .time-block .date {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Content layout */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 32px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Timeline */
+    .timeline-panel {
+      background: var(--bg-panel);
+      border-radius: 20px;
+      padding: 24px;
+      border: 1px solid var(--border-glow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--bg-card);
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 4px;
+      height: 24px;
+      background: linear-gradient(180deg, var(--lc-teal), var(--pw-green));
+      border-radius: 2px;
+    }
+
+    .timeline-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 12px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar-track {
+      background: var(--bg-card);
+      border-radius: 3px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar-thumb {
+      background: var(--lc-teal);
+      border-radius: 3px;
+    }
+
+    /* Timeline items */
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .timeline-marker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+    }
+
+    .timeline-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .timeline-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .timeline-dot::after {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .timeline-line {
+      width: 2px;
+      flex: 1;
+      background: linear-gradient(180deg, var(--bg-card), transparent);
+      margin-top: 8px;
+    }
+
+    .timeline-content {
+      flex: 1;
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 16px 20px;
+      border-left: 3px solid var(--pw-green);
+    }
+
+    .timeline-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      background: rgba(34, 197, 94, 0.2);
+      color: var(--pw-green);
+    }
+
+    .timeline-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      max-height: 60px;
+      overflow: hidden;
+    }
+
+    .timeline-agent {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .agent-icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    /* Stats sidebar */
+    .stats-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .stat-card {
+      background: var(--bg-panel);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border-glow);
+    }
+
+    .stat-header {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      font-size: 42px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--pw-green);
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Team activity */
+    .team-card {
+      background: var(--bg-panel);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border-glow);
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .team-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .team-member {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-card);
+      border-radius: 10px;
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .member-info {
+      flex: 1;
+    }
+
+    .member-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .member-status {
+      font-size: 12px;
+      color: var(--text-secondary);
+      max-width: 160px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .member-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .member-indicator.working {
+      background: var(--pw-green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    .member-indicator.idle {
+      background: var(--text-secondary);
+      opacity: 0.5;
+    }
+
+    /* Footer branding */
+    .footer-brand {
+      position: fixed;
+      bottom: 20px;
+      right: 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .brand-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .brand-dot.pw { background: var(--pw-green); }
+    .brand-dot.lc { background: var(--lc-teal); }
+
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-secondary);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--bg-card);
+      border-top-color: var(--lc-teal);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-message {
+      text-align: center;
+      padding: 40px;
+      color: var(--pw-red);
+    }
+  </style>
+</head>
+<body>
+  <div class="lcars-sidebar">
+    <div class="lcars-top"></div>
+    <div class="lcars-middle"></div>
+    <div class="lcars-bottom"></div>
+  </div>
+
+  <div class="main-content">
+    <div class="header">
+      <h1>TEAM <span>ACTIVITY</span></h1>
+      <div class="header-right">
+        <div id="monday-status" class="monday-status connected">
+          <span class="status-dot"></span>
+          <span>Monday.com</span>
+          <span id="monday-text">Synced</span>
+        </div>
+        <div class="time-block">
+          <div class="time" id="clock">--:--:--</div>
+          <div class="date" id="date">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="timeline-panel">
+        <div class="panel-header">
+          <div class="panel-title">Recent Completions</div>
+          <span id="count">Loading...</span>
+        </div>
+        <div class="timeline-scroll" id="timeline">
+          <div class="loading">
+            <div class="loading-spinner"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-sidebar">
+        <div class="stat-card">
+          <div class="stat-header">Tasks Completed Today</div>
+          <div class="stat-value" id="completed-today">--</div>
+          <div class="stat-label" id="completed-compare">Loading...</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">Active Agents</div>
+          <div class="stat-value" style="color: var(--lc-teal);" id="active-agents">--</div>
+          <div class="stat-label">Online now</div>
+        </div>
+
+        <div class="team-card">
+          <div class="stat-header">Team Status</div>
+          <div class="team-list" id="team-list">
+            <div class="loading">
+              <div class="loading-spinner"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-brand">
+    <div class="brand-item">
+      <span class="brand-dot pw"></span>
+      <span>ParkWise</span>
+    </div>
+    <span>|</span>
+    <div class="brand-item">
+      <span class="brand-dot lc"></span>
+      <span>Local Connect</span>
+    </div>
+  </div>
+
+  <script>
+    // Agent configuration
+    const AGENT_EMOJIS = {
+      blue: '🔵', mentor: '🧭', pepper: '💼', professor: '🎓',
+      wonda: '🎨', archie: '📚', atlas: '🅿️', cipher: '🔐',
+      friday: '⚡', jarvis: '🎯', lexis: '⚖️', wong: '📚',
+      loki: '📝', quill: '✍️', scout: '🔍', vision: '👁️'
+    };
+
+    const AGENT_ROLES = {
+      blue: 'Monday.com Specialist', mentor: 'HR & Talent',
+      pepper: 'Admin & Comms', professor: 'Agent Trainer',
+      wonda: 'Designer', archie: 'Tech Docs', atlas: 'Parking Expert',
+      cipher: 'Security', friday: 'Lead Developer', jarvis: 'Project Lead',
+      lexis: 'Legal', wong: 'Tech Writer', loki: 'Content Writer',
+      quill: 'Social Media', scout: 'Research', vision: 'SEO Analyst'
+    };
+
+    const AGENT_COLORS = {
+      blue: '#3B82F6', mentor: '#F59E0B', pepper: '#8B5CF6', professor: '#10B981',
+      wonda: '#EC4899', archie: '#6366F1', atlas: '#22C55E', cipher: '#EF4444',
+      friday: '#F97316', jarvis: '#0EA5E9', lexis: '#8B5CF6', wong: '#6366F1',
+      loki: '#F472B6', quill: '#A78BFA', scout: '#34D399', vision: '#60A5FA'
+    };
+
+    const HQ_API = 'http://localhost:3800';
+    const REFRESH_INTERVAL = 30000;
+    let scrollPosition = 0;
+    let autoScrollEnabled = true;
+
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+      document.getElementById('date').textContent = now.toLocaleDateString('en-GB', { 
+        weekday: 'long', day: 'numeric', month: 'long'
+      });
+    }
+
+    // Format relative time
+    function formatRelativeTime(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+      
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays === 1) return 'Yesterday';
+      return `${diffDays}d ago`;
+    }
+
+    // Format time
+    function formatTime(dateStr) {
+      return new Date(dateStr).toLocaleTimeString('en-GB', { 
+        hour: '2-digit', 
+        minute: '2-digit'
+      });
+    }
+
+    // Render timeline
+    function renderTimeline(tasks) {
+      const timeline = document.getElementById('timeline');
+      
+      if (tasks.length === 0) {
+        timeline.innerHTML = '<div class="error-message">No completed tasks found</div>';
+        return;
+      }
+
+      timeline.innerHTML = tasks.map((task, index) => {
+        const agentId = task.assignedTo || 'unknown';
+        const emoji = AGENT_EMOJIS[agentId] || '🤖';
+        const role = AGENT_ROLES[agentId] || 'Agent';
+        const color = AGENT_COLORS[agentId] || '#64748B';
+        const time = task.completedAt ? formatTime(task.completedAt) : formatTime(task.updatedAt);
+        const relative = task.completedAt ? formatRelativeTime(task.completedAt) : formatRelativeTime(task.updatedAt);
+        const summary = task.output ? task.output.split('##')[0].substring(0, 120) + '...' : task.description?.substring(0, 120) || '';
+
+        return `
+          <div class="timeline-item" style="animation-delay: ${index * 0.1}s">
+            <div class="timeline-marker">
+              <span class="timeline-time">${time}</span>
+              <div class="timeline-dot" style="background: ${color}"></div>
+              ${index < tasks.length - 1 ? '<div class="timeline-line"></div>' : ''}
+            </div>
+            <div class="timeline-content" style="border-left-color: ${color}">
+              <div class="timeline-title">
+                ${task.title}
+                <span class="timeline-badge">Done</span>
+              </div>
+              <div class="timeline-desc">${summary}</div>
+              <div class="timeline-agent">
+                <span class="agent-icon" style="background: ${color}30">${emoji}</span>
+                <span style="text-transform: capitalize">${agentId}</span> • ${role}
+                <span style="margin-left: auto; color: #64748b">${relative}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Render team list
+    function renderTeamList(agents) {
+      const teamList = document.getElementById('team-list');
+      const sorted = [...agents].sort((a, b) => {
+        if (a.status === 'working' && b.status !== 'working') return -1;
+        if (a.status !== 'working' && b.status === 'working') return 1;
+        return 0;
+      });
+
+      teamList.innerHTML = sorted.slice(0, 8).map(agent => {
+        const emoji = AGENT_EMOJIS[agent.id] || agent.avatar || '🤖';
+        const color = AGENT_COLORS[agent.id] || '#64748B';
+        const isWorking = agent.status === 'working';
+        
+        return `
+          <div class="team-member">
+            <div class="member-avatar" style="background: ${color}30">${emoji}</div>
+            <div class="member-info">
+              <div class="member-name" style="text-transform: capitalize">${agent.name || agent.id}</div>
+              <div class="member-status">${isWorking ? 'Working...' : 'Idle'}</div>
+            </div>
+            <div class="member-indicator ${isWorking ? 'working' : 'idle'}"></div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Fetch and update data
+    async function fetchData() {
+      try {
+        const [tasksRes, agentsRes] = await Promise.all([
+          fetch(`${HQ_API}/api/tasks`),
+          fetch(`${HQ_API}/api/agents`)
+        ]);
+
+        if (!tasksRes.ok || !agentsRes.ok) throw new Error('API Error');
+
+        const tasks = await tasksRes.json();
+        const agents = await agentsRes.json();
+
+        // Filter completed tasks
+        const completedTasks = tasks
+          .filter(t => t.status === 'done' && t.completedAt)
+          .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
+          .slice(0, 15);
+
+        // Today's tasks
+        const today = new Date();
+        const todayTasks = completedTasks.filter(t => {
+          const d = new Date(t.completedAt);
+          return d.toDateString() === today.toDateString();
+        });
+
+        // Active agents
+        const activeAgents = agents.filter(a => a.status === 'working');
+
+        // Update UI
+        renderTimeline(completedTasks);
+        renderTeamList(agents);
+        document.getElementById('completed-today').textContent = todayTasks.length;
+        document.getElementById('completed-compare').textContent = `${completedTasks.length} total in queue`;
+        document.getElementById('active-agents').textContent = activeAgents.length;
+        document.getElementById('count').textContent = `${todayTasks.length} today`;
+
+        // Update Monday status (simulated - would check actual API)
+        document.getElementById('monday-status').className = 'monday-status connected';
+        document.getElementById('monday-text').textContent = 'Synced';
+
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        document.getElementById('monday-status').className = 'monday-status disconnected';
+        document.getElementById('monday-text').textContent = 'Error';
+      }
+    }
+
+    // Auto-scroll timeline
+    function autoScroll() {
+      if (!autoScrollEnabled) return;
+      
+      const timeline = document.getElementById('timeline');
+      const maxScroll = timeline.scrollHeight - timeline.clientHeight;
+      
+      if (maxScroll <= 0) return;
+      
+      scrollPosition += 0.5;
+      if (scrollPosition >= maxScroll) {
+        setTimeout(() => { scrollPosition = 0; }, 2000);
+      }
+      
+      timeline.scrollTop = scrollPosition;
+    }
+
+    // Initialize
+    updateClock();
+    setInterval(updateClock, 1000);
+    
+    fetchData();
+    setInterval(fetchData, REFRESH_INTERVAL);
+    
+    setInterval(autoScroll, 50);
+
+    // Pause auto-scroll on hover
+    document.getElementById('timeline').addEventListener('mouseenter', () => {
+      autoScrollEnabled = false;
+    });
+    document.getElementById('timeline').addEventListener('mouseleave', () => {
+      autoScrollEnabled = true;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skynet Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0a0a0f;
+      --bg-card: #12121a;
+      --accent-teal: #4ECDC4;
+      --accent-orange: #F59E0B;
+      --accent-purple: #9966CC;
+      --accent-green: #22C55E;
+      --accent-red: #EF4444;
+      --text-primary: #ffffff;
+      --text-secondary: #94a3b8;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent-teal), var(--accent-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .clock {
+      font-size: 32px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .date {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 24px;
+    }
+
+    .widget {
+      background: var(--bg-card);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .widget-title {
+      font-size: 14px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+    }
+
+    .widget-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent-green);
+    }
+
+    .widget-body {
+      padding: 20px;
+    }
+
+    /* Stats Widget */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+    }
+
+    .stat-value {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--accent-teal);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Task List Widget */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+    }
+
+    .task-status {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .task-status.running { background: var(--accent-orange); animation: pulse 1s infinite; }
+    .task-status.done { background: var(--accent-green); }
+    .task-status.pending { background: var(--text-secondary); }
+    .task-status.error { background: var(--accent-red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .task-name {
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .task-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Progress Widget */
+    .progress-item {
+      margin-bottom: 20px;
+    }
+
+    .progress-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .progress-fill.teal { background: var(--accent-teal); }
+    .progress-fill.orange { background: var(--accent-orange); }
+    .progress-fill.purple { background: var(--accent-purple); }
+
+    /* Embed Widget */
+    .widget-embed {
+      width: 100%;
+      height: 300px;
+      border: none;
+    }
+
+    /* Services Widget */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .service-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .service-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .service-dot.online { background: var(--accent-green); }
+    .service-dot.offline { background: var(--accent-red); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">🛰️</div>
+      <span>SKYNET DASHBOARD</span>
+    </div>
+    <div>
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="date" id="date">Loading...</div>
+    </div>
+  </div>
+
+  <div class="grid" id="widgetGrid">
+    <!-- Stats Widget -->
+    <div class="widget">
+      <div class="widget-header">
+        <span class="widget-title">📊 System Stats</span>
+        <div class="widget-status"></div>
+      </div>
+      <div class="widget-body">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value" id="movementCount">—</div>
+            <div class="stat-label">Movements</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="paymentCount">—</div>
+            <div class="stat-label">Payments</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="screenCount">—</div>
+            <div class="stat-label">Screens</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="siteCount">—</div>
+            <div class="stat-label">Sites</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tasks Widget -->
+    <div class="widget">
+      <div class="widget-header">
+        <span class="widget-title">🔄 Running Tasks</span>
+        <div class="widget-status"></div>
+      </div>
+      <div class="widget-body">
+        <div class="task-list" id="taskList">
+          <div class="task-item">
+            <div class="task-status running"></div>
+            <span class="task-name">Phoenix Sync</span>
+            <span class="task-time">Every 5m</span>
+          </div>
+          <div class="task-item">
+            <div class="task-status done"></div>
+            <span class="task-name">Signage Updated</span>
+            <span class="task-time">Just now</span>
+          </div>
+          <div class="task-item">
+            <div class="task-status pending"></div>
+            <span class="task-name">Hailo Validation</span>
+            <span class="task-time">Waiting</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Widget -->
+    <div class="widget">
+      <div class="widget-header">
+        <span class="widget-title">📈 Sync Progress</span>
+        <div class="widget-status"></div>
+      </div>
+      <div class="widget-body">
+        <div class="progress-item">
+          <div class="progress-label">
+            <span>Detection Sync</span>
+            <span id="detectionPercent">—%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill teal" id="detectionBar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label">
+            <span>Payment Sync</span>
+            <span id="paymentPercent">—%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill orange" id="paymentBar" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="progress-item">
+          <div class="progress-label">
+            <span>Daily Events</span>
+            <span id="dailyPercent">—%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill purple" id="dailyBar" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services Widget -->
+    <div class="widget">
+      <div class="widget-header">
+        <span class="widget-title">🖥️ Services</span>
+        <div class="widget-status"></div>
+      </div>
+      <div class="widget-body">
+        <div class="services-grid" id="servicesGrid">
+          <div class="service-item"><div class="service-dot online"></div>POS Backend</div>
+          <div class="service-item"><div class="service-dot online"></div>POS Frontend</div>
+          <div class="service-item"><div class="service-dot online"></div>Signage</div>
+          <div class="service-item"><div class="service-dot online"></div>LCARS</div>
+          <div class="service-item"><div class="service-dot online"></div>Phoenix</div>
+          <div class="service-item"><div class="service-dot online"></div>Ideate</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Clock
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+      document.getElementById('date').textContent = now.toLocaleDateString('en-GB', { 
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
+      });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // Fetch stats
+    async function fetchStats() {
+      try {
+        // Phoenix stats
+        const phoenix = await fetch('http://10.10.10.123:3400/api/proxy/phoenix').then(r => r.json());
+        
+        // Screen count
+        const screens = await fetch('http://10.10.10.123:3400/api/screens').then(r => r.json());
+        const connectedScreens = screens.data?.filter(s => s.connected).length || 0;
+        
+        // Update UI
+        document.getElementById('screenCount').textContent = connectedScreens;
+        
+        if (phoenix.detections) {
+          const syncPercent = Math.min(100, (864 / phoenix.detections.count) * 100);
+          document.getElementById('detectionPercent').textContent = syncPercent.toFixed(1) + '%';
+          document.getElementById('detectionBar').style.width = syncPercent + '%';
+        }
+        
+        // Simulated values (replace with real API calls)
+        document.getElementById('movementCount').textContent = '864';
+        document.getElementById('paymentCount').textContent = '84.5K';
+        document.getElementById('siteCount').textContent = '69';
+        document.getElementById('paymentPercent').textContent = '100%';
+        document.getElementById('paymentBar').style.width = '100%';
+        document.getElementById('dailyPercent').textContent = '42%';
+        document.getElementById('dailyBar').style.width = '42%';
+        
+      } catch (err) {
+        console.error('Fetch error:', err);
+      }
+    }
+    
+    fetchStats();
+    setInterval(fetchStats, 15000);
+  </script>
+</body>
+</html>

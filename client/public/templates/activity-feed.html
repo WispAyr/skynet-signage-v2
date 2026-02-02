@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity Feed - Skynet</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pw-green: #22C55E;
+      --pw-blue: #0077B6;
+      --pw-navy: #1E3A5F;
+      --pw-orange: #F97316;
+      --pw-red: #EF4444;
+      --pw-amber: #F59E0B;
+      --pw-purple: #8B5CF6;
+      
+      --lc-teal: #4ECDC4;
+      --lc-cyan: #48CAE4;
+      
+      --bg-dark: #0a0f1a;
+      --bg-panel: #111827;
+      --bg-card: #1f2937;
+      --border-glow: rgba(78, 205, 196, 0.3);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* LCARS sidebar */
+    .lcars-sidebar {
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 80px;
+      background: linear-gradient(180deg, var(--lc-teal), var(--pw-green), var(--lc-cyan));
+      display: flex;
+      flex-direction: column;
+    }
+
+    .lcars-top {
+      height: 120px;
+      background: var(--bg-dark);
+      border-radius: 0 0 40px 0;
+    }
+
+    .lcars-middle {
+      flex: 1;
+      position: relative;
+    }
+
+    .lcars-middle::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 20px;
+      background: var(--bg-dark);
+    }
+
+    .lcars-bottom {
+      height: 80px;
+      background: var(--bg-dark);
+      border-radius: 0 40px 0 0;
+    }
+
+    /* Main content */
+    .main-content {
+      margin-left: 80px;
+      padding: 32px 40px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-size: 36px;
+      font-weight: 300;
+      letter-spacing: 0.1em;
+      color: var(--lc-teal);
+    }
+
+    .header h1 span {
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+
+    .time-block {
+      text-align: right;
+    }
+
+    .time-block .time {
+      font-size: 32px;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--pw-green);
+    }
+
+    .time-block .date {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* Content layout */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 32px;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Timeline */
+    .timeline-panel {
+      background: var(--bg-panel);
+      border-radius: 20px;
+      padding: 24px;
+      border: 1px solid var(--border-glow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--bg-card);
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 4px;
+      height: 24px;
+      background: linear-gradient(180deg, var(--lc-teal), var(--pw-green));
+      border-radius: 2px;
+    }
+
+    .timeline-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding-right: 12px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar-track {
+      background: var(--bg-card);
+      border-radius: 3px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar-thumb {
+      background: var(--lc-teal);
+      border-radius: 3px;
+    }
+
+    /* Timeline items */
+    .timeline-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 24px;
+      animation: slideIn 0.5s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .timeline-marker {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+    }
+
+    .timeline-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .timeline-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      position: relative;
+    }
+
+    .timeline-dot::after {
+      content: '';
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .timeline-dot.task { background: var(--pw-green); }
+    .timeline-dot.deploy { background: var(--pw-blue); }
+    .timeline-dot.alert { background: var(--pw-red); }
+    .timeline-dot.update { background: var(--lc-teal); }
+    .timeline-dot.team { background: var(--pw-purple); }
+
+    .timeline-line {
+      width: 2px;
+      flex: 1;
+      background: linear-gradient(180deg, var(--bg-card), transparent);
+      margin-top: 8px;
+    }
+
+    .timeline-content {
+      flex: 1;
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 16px 20px;
+      border-left: 3px solid;
+    }
+
+    .timeline-content.task { border-left-color: var(--pw-green); }
+    .timeline-content.deploy { border-left-color: var(--pw-blue); }
+    .timeline-content.alert { border-left-color: var(--pw-red); }
+    .timeline-content.update { border-left-color: var(--lc-teal); }
+    .timeline-content.team { border-left-color: var(--pw-purple); }
+
+    .timeline-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-badge {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .timeline-badge.task { background: rgba(34, 197, 94, 0.2); color: var(--pw-green); }
+    .timeline-badge.deploy { background: rgba(0, 119, 182, 0.2); color: var(--pw-blue); }
+    .timeline-badge.alert { background: rgba(239, 68, 68, 0.2); color: var(--pw-red); }
+    .timeline-badge.update { background: rgba(78, 205, 196, 0.2); color: var(--lc-teal); }
+    .timeline-badge.team { background: rgba(139, 92, 246, 0.2); color: var(--pw-purple); }
+
+    .timeline-desc {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .timeline-agent {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .agent-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--lc-teal);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+    }
+
+    /* Stats sidebar */
+    .stats-sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .stat-card {
+      background: var(--bg-panel);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border-glow);
+    }
+
+    .stat-header {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .stat-value {
+      font-size: 42px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--pw-green);
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Team activity */
+    .team-card {
+      background: var(--bg-panel);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid var(--border-glow);
+      flex: 1;
+    }
+
+    .team-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .team-member {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-card);
+      border-radius: 10px;
+    }
+
+    .member-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .member-info {
+      flex: 1;
+    }
+
+    .member-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .member-status {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .member-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--pw-green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* Footer branding */
+    .footer-brand {
+      position: fixed;
+      bottom: 20px;
+      right: 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .brand-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    .brand-dot.pw { background: var(--pw-green); }
+    .brand-dot.lc { background: var(--lc-teal); }
+  </style>
+</head>
+<body>
+  <div class="lcars-sidebar">
+    <div class="lcars-top"></div>
+    <div class="lcars-middle"></div>
+    <div class="lcars-bottom"></div>
+  </div>
+
+  <div class="main-content">
+    <div class="header">
+      <h1>ACTIVITY <span>FEED</span></h1>
+      <div class="header-right">
+        <div class="time-block">
+          <div class="time" id="clock">--:--:--</div>
+          <div class="date" id="date">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-grid">
+      <div class="timeline-panel">
+        <div class="panel-header">
+          <div class="panel-title">Recent Activity</div>
+          <span id="count">12 events today</span>
+        </div>
+        <div class="timeline-scroll">
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <span class="timeline-time">14:45</span>
+              <div class="timeline-dot task"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div class="timeline-content task">
+              <div class="timeline-title">
+                Task Completed
+                <span class="timeline-badge task">Done</span>
+              </div>
+              <div class="timeline-desc">Signage templates design - all 5 templates created and deployed</div>
+              <div class="timeline-agent">
+                <span class="agent-icon">🎨</span>
+                <span>Wonda • Designer</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <span class="timeline-time">14:20</span>
+              <div class="timeline-dot deploy"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div class="timeline-content deploy">
+              <div class="timeline-title">
+                Deployment
+                <span class="timeline-badge deploy">Live</span>
+              </div>
+              <div class="timeline-desc">Skynet Dashboard v2.3.1 deployed to production</div>
+              <div class="timeline-agent">
+                <span class="agent-icon">⚡</span>
+                <span>Friday • Lead Developer</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <span class="timeline-time">13:55</span>
+              <div class="timeline-dot update"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div class="timeline-content update">
+              <div class="timeline-title">
+                Documentation Updated
+                <span class="timeline-badge update">Update</span>
+              </div>
+              <div class="timeline-desc">API documentation refreshed with new endpoints</div>
+              <div class="timeline-agent">
+                <span class="agent-icon">📚</span>
+                <span>Archie • Tech Docs</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <span class="timeline-time">13:30</span>
+              <div class="timeline-dot alert"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div class="timeline-content alert">
+              <div class="timeline-title">
+                Alert Resolved
+                <span class="timeline-badge alert">Resolved</span>
+              </div>
+              <div class="timeline-desc">Payment gateway timeout issue - fixed by retry mechanism</div>
+              <div class="timeline-agent">
+                <span class="agent-icon">🔐</span>
+                <span>Cipher • Security</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <span class="timeline-time">12:45</span>
+              <div class="timeline-dot team"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div class="timeline-content team">
+              <div class="timeline-title">
+                Team Sync
+                <span class="timeline-badge team">Meeting</span>
+              </div>
+              <div class="timeline-desc">Daily standup completed - 5 agents participated</div>
+              <div class="timeline-agent">
+                <span class="agent-icon">🎯</span>
+                <span>Jarvis • Project Lead</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="timeline-item">
+            <div class="timeline-marker">
+              <span class="timeline-time">11:20</span>
+              <div class="timeline-dot task"></div>
+              <div class="timeline-line"></div>
+            </div>
+            <div class="timeline-content task">
+              <div class="timeline-title">
+                Research Complete
+                <span class="timeline-badge task">Done</span>
+              </div>
+              <div class="timeline-desc">Competitor analysis for Q1 2025 parking trends</div>
+              <div class="timeline-agent">
+                <span class="agent-icon">🔍</span>
+                <span>Scout • Market Research</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-sidebar">
+        <div class="stat-card">
+          <div class="stat-header">Tasks Completed Today</div>
+          <div class="stat-value">12</div>
+          <div class="stat-label">+3 from yesterday</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">Active Agents</div>
+          <div class="stat-value" style="color: var(--lc-teal);">8</div>
+          <div class="stat-label">Online now</div>
+        </div>
+
+        <div class="team-card">
+          <div class="stat-header">Team Activity</div>
+          <div class="team-list">
+            <div class="team-member">
+              <div class="member-avatar" style="background: var(--pw-green);">⚡</div>
+              <div class="member-info">
+                <div class="member-name">Friday</div>
+                <div class="member-status">Working on API fixes</div>
+              </div>
+              <div class="member-indicator"></div>
+            </div>
+            <div class="team-member">
+              <div class="member-avatar" style="background: var(--lc-teal);">🎨</div>
+              <div class="member-info">
+                <div class="member-name">Wonda</div>
+                <div class="member-status">Designing templates</div>
+              </div>
+              <div class="member-indicator"></div>
+            </div>
+            <div class="team-member">
+              <div class="member-avatar" style="background: var(--pw-blue);">🎯</div>
+              <div class="member-info">
+                <div class="member-name">Jarvis</div>
+                <div class="member-status">Sprint planning</div>
+              </div>
+              <div class="member-indicator"></div>
+            </div>
+            <div class="team-member">
+              <div class="member-avatar" style="background: var(--pw-purple);">📚</div>
+              <div class="member-info">
+                <div class="member-name">Archie</div>
+                <div class="member-status">Updating docs</div>
+              </div>
+              <div class="member-indicator"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-brand">
+    <div class="brand-item">
+      <span class="brand-dot pw"></span>
+      <span>ParkWise</span>
+    </div>
+    <span>|</span>
+    <div class="brand-item">
+      <span class="brand-dot lc"></span>
+      <span>Local Connect</span>
+    </div>
+  </div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
+      document.getElementById('date').textContent = now.toLocaleDateString('en-GB', { 
+        weekday: 'long', day: 'numeric', month: 'long'
+      });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+  </script>
+</body>
+</html>
