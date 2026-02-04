@@ -3,22 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Skynet Dashboard</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>Operations Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #0a0a0f;
-      --bg-card: #12121a;
-      --accent-teal: #4ECDC4;
-      --accent-orange: #F59E0B;
-      --accent-purple: #9966CC;
-      --accent-green: #22C55E;
-      --accent-red: #EF4444;
-      --text-primary: #ffffff;
+      --pw-green: #22C55E;
+      --pw-blue: #0077B6;
+      --pw-navy: #1E3A5F;
+      --pw-orange: #F97316;
+      --pw-red: #EF4444;
+      --pw-amber: #F59E0B;
+      
+      --lc-teal: #4ECDC4;
+      --lc-cyan: #48CAE4;
+      
+      --bg-dark: #0a0f1a;
+      --bg-panel: #111827;
+      --bg-card: #1f2937;
+      --border-glow: rgba(78, 205, 196, 0.3);
+      --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
     }
 
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
     body {
       font-family: 'Inter', sans-serif;
@@ -28,390 +39,490 @@
       padding: 24px;
     }
 
+    /* LCARS header bar */
     .header {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .lcars-elbow {
+      width: 200px;
+      height: 60px;
+      background: linear-gradient(90deg, var(--lc-teal), var(--pw-green));
+      border-radius: 30px 0 0 0;
+      position: relative;
+    }
+
+    .lcars-elbow::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      right: -40px;
+      width: 40px;
+      height: 20px;
+      background: linear-gradient(90deg, var(--pw-green), var(--lc-cyan));
+    }
+
+    .header-content {
+      flex: 1;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 24px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      padding-right: 24px;
     }
 
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 20px;
-      font-weight: 700;
-    }
-
-    .logo-icon {
-      width: 40px;
-      height: 40px;
-      background: linear-gradient(135deg, var(--accent-teal), var(--accent-purple));
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .clock {
+    .header h1 {
       font-size: 32px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--lc-teal);
     }
 
-    .date {
-      font-size: 14px;
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .time-display {
+      font-size: 28px;
+      font-weight: 500;
+      color: var(--pw-green);
+    }
+
+    .date-display {
+      font-size: 16px;
       color: var(--text-secondary);
     }
 
-    .grid {
+    /* Grid layout */
+    .dashboard-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 24px;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: auto auto 1fr;
+      gap: 20px;
+      height: calc(100vh - 120px);
     }
 
-    .widget {
-      background: var(--bg-card);
-      border: 1px solid rgba(255,255,255,0.1);
+    /* Stats cards */
+    .stat-card {
+      background: var(--bg-panel);
       border-radius: 16px;
+      padding: 24px;
+      border: 1px solid var(--border-glow);
+      position: relative;
       overflow: hidden;
     }
 
-    .widget-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
     }
 
-    .widget-title {
-      font-size: 14px;
+    .stat-card.green::before { background: var(--pw-green); }
+    .stat-card.blue::before { background: var(--pw-blue); }
+    .stat-card.teal::before { background: var(--lc-teal); }
+    .stat-card.orange::before { background: var(--pw-orange); }
+
+    .stat-label {
+      font-size: 12px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       color: var(--text-secondary);
-    }
-
-    .widget-status {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--accent-green);
-    }
-
-    .widget-body {
-      padding: 20px;
-    }
-
-    /* Stats Widget */
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 16px;
-    }
-
-    .stat-item {
-      text-align: center;
-      padding: 16px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 12px;
+      margin-bottom: 8px;
     }
 
     .stat-value {
-      font-size: 36px;
-      font-weight: 800;
-      color: var(--accent-teal);
+      font-size: 48px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1;
     }
 
-    .stat-label {
-      font-size: 12px;
-      color: var(--text-secondary);
-      margin-top: 4px;
+    .stat-value.green { color: var(--pw-green); }
+    .stat-value.blue { color: var(--pw-blue); }
+    .stat-value.teal { color: var(--lc-teal); }
+    .stat-value.orange { color: var(--pw-orange); }
+
+    .stat-change {
+      font-size: 14px;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    /* Task List Widget */
-    .task-list {
+    .stat-change.up { color: var(--pw-green); }
+    .stat-change.down { color: var(--pw-red); }
+
+    /* Occupancy panel */
+    .occupancy-panel {
+      grid-column: span 2;
+      background: var(--bg-panel);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid var(--border-glow);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--lc-teal);
+    }
+
+    .occupancy-bars {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .occupancy-item {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .occupancy-label {
+      width: 120px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .occupancy-bar {
+      flex: 1;
+      height: 24px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .occupancy-fill {
+      height: 100%;
+      border-radius: 12px;
+      transition: width 0.5s ease;
+    }
+
+    .occupancy-fill.low { background: linear-gradient(90deg, var(--pw-green), #34d399); }
+    .occupancy-fill.medium { background: linear-gradient(90deg, var(--pw-amber), #fbbf24); }
+    .occupancy-fill.high { background: linear-gradient(90deg, var(--pw-red), #f87171); }
+
+    .occupancy-value {
+      width: 60px;
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    /* Events panel */
+    .events-panel {
+      grid-column: span 2;
+      grid-row: span 2;
+      background: var(--bg-panel);
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid var(--border-glow);
+      overflow: hidden;
+    }
+
+    .events-list {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      max-height: calc(100% - 50px);
+      overflow-y: auto;
     }
 
-    .task-item {
+    .event-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 10px;
+      gap: 16px;
+      padding: 16px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border-left: 4px solid var(--lc-teal);
     }
 
-    .task-status {
-      width: 12px;
-      height: 12px;
+    .event-item.entry { border-left-color: var(--pw-green); }
+    .event-item.exit { border-left-color: var(--pw-orange); }
+    .event-item.alert { border-left-color: var(--pw-red); }
+
+    .event-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--text-secondary);
+      min-width: 60px;
+    }
+
+    .event-content {
+      flex: 1;
+    }
+
+    .event-title {
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .event-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .event-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .event-badge.entry { background: rgba(34, 197, 94, 0.2); color: var(--pw-green); }
+    .event-badge.exit { background: rgba(249, 115, 22, 0.2); color: var(--pw-orange); }
+    .event-badge.alert { background: rgba(239, 68, 68, 0.2); color: var(--pw-red); }
+
+    /* Status footer */
+    .status-footer {
+      grid-column: span 4;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 24px;
+      background: var(--bg-panel);
+      border-radius: 16px;
+      border: 1px solid var(--border-glow);
+    }
+
+    .system-status {
+      display: flex;
+      gap: 32px;
+    }
+
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
     }
 
-    .task-status.running { background: var(--accent-orange); animation: pulse 1s infinite; }
-    .task-status.done { background: var(--accent-green); }
-    .task-status.pending { background: var(--text-secondary); }
-    .task-status.error { background: var(--accent-red); }
+    .status-dot.online { background: var(--pw-green); }
+    .status-dot.warning { background: var(--pw-amber); }
+    .status-dot.offline { background: var(--pw-red); }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.5; }
     }
 
-    .task-name {
-      flex: 1;
-      font-weight: 500;
-    }
-
-    .task-time {
-      font-size: 12px;
+    .branding {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
       color: var(--text-secondary);
     }
 
-    /* Progress Widget */
-    .progress-item {
-      margin-bottom: 20px;
-    }
-
-    .progress-item:last-child {
-      margin-bottom: 0;
-    }
-
-    .progress-label {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-
-    .progress-bar {
-      height: 8px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 4px;
-      overflow: hidden;
-    }
-
-    .progress-fill {
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.5s ease;
-    }
-
-    .progress-fill.teal { background: var(--accent-teal); }
-    .progress-fill.orange { background: var(--accent-orange); }
-    .progress-fill.purple { background: var(--accent-purple); }
-
-    /* Embed Widget */
-    .widget-embed {
-      width: 100%;
-      height: 300px;
-      border: none;
-    }
-
-    /* Services Widget */
-    .services-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-
-    .service-item {
+    .brand-logo {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 12px;
-      background: rgba(0,0,0,0.3);
-      border-radius: 8px;
-      font-size: 13px;
+      font-weight: 600;
     }
 
-    .service-dot {
+    .brand-logo .dot {
       width: 8px;
       height: 8px;
       border-radius: 50%;
     }
 
-    .service-dot.online { background: var(--accent-green); }
-    .service-dot.offline { background: var(--accent-red); }
+    .brand-logo.pw .dot { background: var(--pw-green); }
+    .brand-logo.lc .dot { background: var(--lc-teal); }
   </style>
 </head>
 <body>
   <div class="header">
-    <div class="logo">
-      <div class="logo-icon">🛰️</div>
-      <span>SKYNET DASHBOARD</span>
-    </div>
-    <div>
-      <div class="clock" id="clock">--:--:--</div>
-      <div class="date" id="date">Loading...</div>
+    <div class="lcars-elbow"></div>
+    <div class="header-content">
+      <h1>OPERATIONS DASHBOARD</h1>
+      <div class="header-meta">
+        <span class="date-display" id="date">Loading...</span>
+        <span class="time-display" id="clock">--:--:--</span>
+      </div>
     </div>
   </div>
 
-  <div class="grid" id="widgetGrid">
-    <!-- Stats Widget -->
-    <div class="widget">
-      <div class="widget-header">
-        <span class="widget-title">📊 System Stats</span>
-        <div class="widget-status"></div>
+  <div class="dashboard-grid">
+    <!-- Stats Row -->
+    <div class="stat-card green">
+      <div class="stat-label">Today's Revenue</div>
+      <div class="stat-value green">£1,247</div>
+      <div class="stat-change up">↑ 12% from yesterday</div>
+    </div>
+
+    <div class="stat-card blue">
+      <div class="stat-label">Active Sessions</div>
+      <div class="stat-value blue">38</div>
+      <div class="stat-change up">↑ 5 in last hour</div>
+    </div>
+
+    <div class="stat-card teal">
+      <div class="stat-label">Entries Today</div>
+      <div class="stat-value teal">156</div>
+      <div class="stat-change up">↑ 8% vs avg</div>
+    </div>
+
+    <div class="stat-card orange">
+      <div class="stat-label">Avg Duration</div>
+      <div class="stat-value orange">2.4h</div>
+      <div class="stat-change down">↓ 0.2h from yesterday</div>
+    </div>
+
+    <!-- Occupancy Panel -->
+    <div class="occupancy-panel">
+      <div class="panel-header">
+        <span class="panel-title">📊 Real-Time Occupancy</span>
+        <span class="refresh-indicator" id="lastUpdate">Updated: --:--</span>
       </div>
-      <div class="widget-body">
-        <div class="stats-grid">
-          <div class="stat-item">
-            <div class="stat-value" id="movementCount">—</div>
-            <div class="stat-label">Movements</div>
+      <div class="occupancy-bars">
+        <div class="occupancy-item">
+          <span class="occupancy-label">Kyle Rise</span>
+          <div class="occupancy-bar">
+            <div class="occupancy-fill medium" style="width: 68%"></div>
           </div>
-          <div class="stat-item">
-            <div class="stat-value" id="paymentCount">—</div>
-            <div class="stat-label">Payments</div>
+          <span class="occupancy-value">34/50</span>
+        </div>
+        <div class="occupancy-item">
+          <span class="occupancy-label">Kyle Surface</span>
+          <div class="occupancy-bar">
+            <div class="occupancy-fill low" style="width: 42%"></div>
           </div>
-          <div class="stat-item">
-            <div class="stat-value" id="screenCount">—</div>
-            <div class="stat-label">Screens</div>
+          <span class="occupancy-value">21/50</span>
+        </div>
+        <div class="occupancy-item">
+          <span class="occupancy-label">Greenford</span>
+          <div class="occupancy-bar">
+            <div class="occupancy-fill high" style="width: 92%"></div>
           </div>
-          <div class="stat-item">
-            <div class="stat-value" id="siteCount">—</div>
-            <div class="stat-label">Sites</div>
-          </div>
+          <span class="occupancy-value">46/50</span>
         </div>
       </div>
     </div>
 
-    <!-- Tasks Widget -->
-    <div class="widget">
-      <div class="widget-header">
-        <span class="widget-title">🔄 Running Tasks</span>
-        <div class="widget-status"></div>
+    <!-- Events Panel -->
+    <div class="events-panel">
+      <div class="panel-header">
+        <span class="panel-title">📋 Recent Events</span>
       </div>
-      <div class="widget-body">
-        <div class="task-list" id="taskList">
-          <div class="task-item">
-            <div class="task-status running"></div>
-            <span class="task-name">Phoenix Sync</span>
-            <span class="task-time">Every 5m</span>
+      <div class="events-list">
+        <div class="event-item entry">
+          <span class="event-time">14:32</span>
+          <div class="event-content">
+            <div class="event-title">AB12 CDE</div>
+            <div class="event-subtitle">Kyle Rise - Bay A12</div>
           </div>
-          <div class="task-item">
-            <div class="task-status done"></div>
-            <span class="task-name">Signage Updated</span>
-            <span class="task-time">Just now</span>
+          <span class="event-badge entry">Entry</span>
+        </div>
+        <div class="event-item exit">
+          <span class="event-time">14:28</span>
+          <div class="event-content">
+            <div class="event-title">XY34 FGH</div>
+            <div class="event-subtitle">Kyle Surface - Duration: 1h 42m</div>
           </div>
-          <div class="task-item">
-            <div class="task-status pending"></div>
-            <span class="task-name">Hailo Validation</span>
-            <span class="task-time">Waiting</span>
+          <span class="event-badge exit">Exit</span>
+        </div>
+        <div class="event-item entry">
+          <span class="event-time">14:25</span>
+          <div class="event-content">
+            <div class="event-title">MN56 JKL</div>
+            <div class="event-subtitle">Kyle Rise - Bay B7</div>
           </div>
+          <span class="event-badge entry">Entry</span>
+        </div>
+        <div class="event-item alert">
+          <span class="event-time">14:20</span>
+          <div class="event-content">
+            <div class="event-title">Overstay Alert</div>
+            <div class="event-subtitle">ZZ99 ABC - Kyle Rise - 4h 15m</div>
+          </div>
+          <span class="event-badge alert">Alert</span>
+        </div>
+        <div class="event-item exit">
+          <span class="event-time">14:18</span>
+          <div class="event-content">
+            <div class="event-title">PQ78 RST</div>
+            <div class="event-subtitle">Kyle Rise - Duration: 2h 05m</div>
+          </div>
+          <span class="event-badge exit">Exit</span>
         </div>
       </div>
     </div>
 
-    <!-- Progress Widget -->
-    <div class="widget">
-      <div class="widget-header">
-        <span class="widget-title">📈 Sync Progress</span>
-        <div class="widget-status"></div>
-      </div>
-      <div class="widget-body">
-        <div class="progress-item">
-          <div class="progress-label">
-            <span>Detection Sync</span>
-            <span id="detectionPercent">—%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill teal" id="detectionBar" style="width: 0%"></div>
-          </div>
+    <!-- Status Footer -->
+    <div class="status-footer">
+      <div class="system-status">
+        <div class="status-indicator">
+          <span class="status-dot online"></span>
+          <span>ANPR Online</span>
         </div>
-        <div class="progress-item">
-          <div class="progress-label">
-            <span>Payment Sync</span>
-            <span id="paymentPercent">—%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill orange" id="paymentBar" style="width: 0%"></div>
-          </div>
+        <div class="status-indicator">
+          <span class="status-dot online"></span>
+          <span>Payment Gateway</span>
         </div>
-        <div class="progress-item">
-          <div class="progress-label">
-            <span>Daily Events</span>
-            <span id="dailyPercent">—%</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill purple" id="dailyBar" style="width: 0%"></div>
-          </div>
+        <div class="status-indicator">
+          <span class="status-dot online"></span>
+          <span>Camera Feed</span>
+        </div>
+        <div class="status-indicator">
+          <span class="status-dot warning"></span>
+          <span>Barrier (Maintenance)</span>
         </div>
       </div>
-    </div>
-
-    <!-- Services Widget -->
-    <div class="widget">
-      <div class="widget-header">
-        <span class="widget-title">🖥️ Services</span>
-        <div class="widget-status"></div>
-      </div>
-      <div class="widget-body">
-        <div class="services-grid" id="servicesGrid">
-          <div class="service-item"><div class="service-dot online"></div>POS Backend</div>
-          <div class="service-item"><div class="service-dot online"></div>POS Frontend</div>
-          <div class="service-item"><div class="service-dot online"></div>Signage</div>
-          <div class="service-item"><div class="service-dot online"></div>LCARS</div>
-          <div class="service-item"><div class="service-dot online"></div>Phoenix</div>
-          <div class="service-item"><div class="service-dot online"></div>Ideate</div>
+      <div class="branding">
+        <div class="brand-logo pw">
+          <span class="dot"></span>
+          <span>ParkWise</span>
+        </div>
+        <span>|</span>
+        <div class="brand-logo lc">
+          <span class="dot"></span>
+          <span>Local Connect</span>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // Clock
     function updateClock() {
       const now = new Date();
       document.getElementById('clock').textContent = now.toLocaleTimeString('en-GB');
       document.getElementById('date').textContent = now.toLocaleDateString('en-GB', { 
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' 
       });
+      document.getElementById('lastUpdate').textContent = 'Updated: ' + now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     }
     updateClock();
     setInterval(updateClock, 1000);
-
-    // Fetch stats
-    async function fetchStats() {
-      try {
-        // Phoenix stats
-        const phoenix = await fetch('http://10.10.10.123:3400/api/proxy/phoenix').then(r => r.json());
-        
-        // Screen count
-        const screens = await fetch('http://10.10.10.123:3400/api/screens').then(r => r.json());
-        const connectedScreens = screens.data?.filter(s => s.connected).length || 0;
-        
-        // Update UI
-        document.getElementById('screenCount').textContent = connectedScreens;
-        
-        if (phoenix.detections) {
-          const syncPercent = Math.min(100, (864 / phoenix.detections.count) * 100);
-          document.getElementById('detectionPercent').textContent = syncPercent.toFixed(1) + '%';
-          document.getElementById('detectionBar').style.width = syncPercent + '%';
-        }
-        
-        // Simulated values (replace with real API calls)
-        document.getElementById('movementCount').textContent = '864';
-        document.getElementById('paymentCount').textContent = '84.5K';
-        document.getElementById('siteCount').textContent = '69';
-        document.getElementById('paymentPercent').textContent = '100%';
-        document.getElementById('paymentBar').style.width = '100%';
-        document.getElementById('dailyPercent').textContent = '42%';
-        document.getElementById('dailyBar').style.width = '42%';
-        
-      } catch (err) {
-        console.error('Fetch error:', err);
-      }
-    }
-    
-    fetchStats();
-    setInterval(fetchStats, 15000);
   </script>
 </body>
 </html>

@@ -333,12 +333,6 @@
 
   <div class="alert-timestamp" id="timestamp">Issued: --:--:--</div>
 
-  <!-- Alert Audio -->
-  <audio id="alertAudio" loop>
-    <!-- Emergency siren sound - can be replaced with custom audio -->
-    <source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg">
-  </audio>
-
   <script>
     // Parse URL params for alert configuration
     const params = new URLSearchParams(window.location.search);
@@ -387,29 +381,6 @@
     }
     updateTime();
     setInterval(updateTime, 1000);
-
-    // Audio control
-    const audio = document.getElementById('alertAudio');
-    const playSound = params.get('sound') !== 'false'; // Default: play sound
-    const soundLevel = level === 'error' ? 1.0 : (level === 'warning' ? 0.7 : 0.5);
-    
-    if (playSound && (level === 'error' || level === 'warning')) {
-      audio.volume = soundLevel;
-      // Auto-play with user interaction fallback
-      audio.play().catch(() => {
-        // If autoplay blocked, play on first click
-        document.addEventListener('click', () => audio.play(), { once: true });
-      });
-    }
-
-    // Stop audio after duration if specified
-    const duration = parseInt(params.get('duration')) || 0;
-    if (duration > 0) {
-      setTimeout(() => {
-        audio.pause();
-        // Optionally redirect back or close
-      }, duration);
-    }
   </script>
 </body>
 </html>

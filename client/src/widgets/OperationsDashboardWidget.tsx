@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { 
   Car, 
   Activity, 
@@ -11,8 +11,23 @@ import {
   Server,
   RefreshCw,
   ParkingCircle,
-  Camera
+  Camera,
+  Volume2,
+  VolumeX
 } from 'lucide-react'
+
+// Built-in alert sound types
+type AlertSoundType = 'chime' | 'alert' | 'urgent' | 'bell' | 'none' | 'custom'
+
+interface AlertSoundConfig {
+  enabled?: boolean           // Enable/disable alert sounds (default: true)
+  threshold?: number          // Queue count threshold to trigger alert (default: 3)
+  soundType?: AlertSoundType  // Type of alert sound (default: 'chime')
+  customSoundUrl?: string     // URL for custom sound file (when soundType is 'custom')
+  volume?: number             // Volume level 0-1 (default: 0.5)
+  repeatInterval?: number     // Min ms between alerts to prevent spam (default: 60000)
+  playOnIncrease?: boolean    // Only play when queue increases (default: true)
+}
 
 interface OperationsDashboardConfig {
   posApiUrl?: string      // POS API base URL (default: http://localhost:3000)
@@ -22,6 +37,81 @@ interface OperationsDashboardConfig {
   showEnforcement?: boolean
   showHealth?: boolean
   title?: string
+  // Alert sound configuration
+  alertSound?: AlertSoundConfig
+}
+
+// Web Audio API based sound generator
+const createAlertSound = (
+  type: AlertSoundType, 
+  volume: number = 0.5,
+  customUrl?: string
+): (() => void) => {
+  // If custom URL provided, use audio element
+  if (type === 'custom' && customUrl) {
+    return () => {
+      const audio = new Audio(customUrl)
+      audio.volume = volume
+      audio.play().catch(e => console.warn('Failed to play custom alert:', e))
+    }
+  }
+
+  // Use Web Audio API for built-in sounds
+  return () => {
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const gainNode = audioContext.createGain()
+      gainNode.connect(audioContext.destination)
+      gainNode.gain.value = volume
+
+      const playTone = (freq: number, start: number, duration: number, type: OscillatorType = 'sine') => {
+        const oscillator = audioContext.createOscillator()
+        oscillator.type = type
+        oscillator.frequency.value = freq
+        oscillator.connect(gainNode)
+        oscillator.start(audioContext.currentTime + start)
+        oscillator.stop(audioContext.currentTime + start + duration)
+      }
+
+      switch (type) {
+        case 'chime':
+          // Pleasant two-tone chime
+          playTone(880, 0, 0.15)      // A5
+          playTone(1108.73, 0.15, 0.2) // C#6
+          break
+
+        case 'alert':
+          // Attention-grabbing three-tone
+          playTone(523.25, 0, 0.1)    // C5
+          playTone(659.25, 0.1, 0.1)  // E5
+          playTone(783.99, 0.2, 0.15) // G5
+          break
+
+        case 'urgent':
+          // Urgent pulsing alert
+          playTone(880, 0, 0.1, 'square')
+          playTone(880, 0.15, 0.1, 'square')
+          playTone(1046.50, 0.3, 0.15, 'square')
+          break
+
+        case 'bell':
+          // Bell-like sound
+          playTone(1396.91, 0, 0.3)   // F6
+          playTone(698.46, 0.05, 0.25) // F5 (harmonic)
+          break
+
+        case 'none':
+        default:
+          // No sound
+          break
+      }
+
+      // Clean up after sounds finish
+      setTimeout(() => audioContext.close(), 1000)
+    } catch (e) {
+      console.warn('Web Audio API not supported or failed:', e)
+    }
+  }
 }
 
 interface SiteData {
@@ -93,6 +183,12 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
   const [loading, setLoading] = useState(true)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [error, setError] = useState<string | null>(null)
+  
+  // Alert sound state
+  const [soundMuted, setSoundMuted] = useState(false)
+  const prevQueueCountRef = useRef<number>(0)
+  const lastAlertTimeRef = useRef<number>(0)
+  const isFirstLoadRef = useRef<boolean>(true)
 
   const posApiUrl = config.posApiUrl || 'http://localhost:3000'
   const siteIds = config.siteIds || ['kyle-rise', 'KCS01']
@@ -100,6 +196,63 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
   const eventLimit = config.eventLimit || 8
   const showEnforcement = config.showEnforcement !== false
   const showHealth = config.showHealth !== false
+  
+  // Alert sound configuration with defaults
+  const alertConfig: Required<AlertSoundConfig> = {
+    enabled: config.alertSound?.enabled !== false,
+    threshold: config.alertSound?.threshold ?? 3,
+    soundType: config.alertSound?.soundType || 'chime',
+    customSoundUrl: config.alertSound?.customSoundUrl || '',
+    volume: config.alertSound?.volume ?? 0.5,
+    repeatInterval: config.alertSound?.repeatInterval ?? 60000,
+    playOnIncrease: config.alertSound?.playOnIncrease !== false
+  }
+  
+  // Create the sound player function
+  const playAlertSound = useCallback(() => {
+    if (soundMuted || !alertConfig.enabled || alertConfig.soundType === 'none') return
+    
+    const now = Date.now()
+    if (now - lastAlertTimeRef.current < alertConfig.repeatInterval) return
+    
+    lastAlertTimeRef.current = now
+    const soundPlayer = createAlertSound(
+      alertConfig.soundType, 
+      alertConfig.volume, 
+      alertConfig.customSoundUrl
+    )
+    soundPlayer()
+  }, [soundMuted, alertConfig])
+  
+  // Check if alert should be triggered
+  const checkAndTriggerAlert = useCallback((currentQueueCount: number) => {
+    // Skip alert on first load
+    if (isFirstLoadRef.current) {
+      isFirstLoadRef.current = false
+      prevQueueCountRef.current = currentQueueCount
+      return
+    }
+    
+    const prevCount = prevQueueCountRef.current
+    const thresholdExceeded = currentQueueCount >= alertConfig.threshold
+    const hasIncreased = currentQueueCount > prevCount
+    
+    // Update previous count
+    prevQueueCountRef.current = currentQueueCount
+    
+    // Determine if we should play alert
+    if (thresholdExceeded) {
+      if (alertConfig.playOnIncrease) {
+        // Only alert when queue increases above threshold
+        if (hasIncreased) {
+          playAlertSound()
+        }
+      } else {
+        // Alert whenever threshold is exceeded
+        playAlertSound()
+      }
+    }
+  }, [alertConfig, playAlertSound])
 
   const fetchData = useCallback(async () => {
     try {
@@ -132,7 +285,12 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
 
       if (showEnforcement && enforcementRes.ok) {
         const enforcement = await enforcementRes.json()
-        setEnforcementQueue(enforcement.items || [])
+        const items = enforcement.items || []
+        setEnforcementQueue(items)
+        
+        // Check if alert should be triggered based on queue count
+        const queueCount = enforcement.total ?? items.length
+        checkAndTriggerAlert(queueCount)
       }
 
       setLastRefresh(new Date())
@@ -143,7 +301,7 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
     } finally {
       setLoading(false)
     }
-  }, [posApiUrl, siteIds, eventLimit, showEnforcement])
+  }, [posApiUrl, siteIds, eventLimit, showEnforcement, checkAndTriggerAlert])
 
   useEffect(() => {
     fetchData()
@@ -222,6 +380,27 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
           <h1 className="text-2xl font-bold">{config.title || 'Operations Dashboard'}</h1>
         </div>
         <div className="flex items-center gap-6">
+          {/* Sound Mute Toggle */}
+          {alertConfig.enabled && alertConfig.soundType !== 'none' && (
+            <button
+              onClick={() => setSoundMuted(!soundMuted)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                soundMuted 
+                  ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' 
+                  : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+              }`}
+              title={soundMuted ? 'Click to unmute alerts' : 'Click to mute alerts'}
+            >
+              {soundMuted ? (
+                <VolumeX className="w-4 h-4" />
+              ) : (
+                <Volume2 className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">
+                {soundMuted ? 'Muted' : `Alert: ${alertConfig.threshold}+`}
+              </span>
+            </button>
+          )}
           {showHealth && (
             <div 
               className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
@@ -400,17 +579,33 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
         <div className="col-span-3 space-y-4">
           {/* Enforcement Queue */}
           {showEnforcement && (
-            <div className="bg-dark-800 rounded-2xl p-5 border border-dark-700">
+            <div className={`bg-dark-800 rounded-2xl p-5 border ${
+              (dashboardData?.summary.reviewQueueCount || 0) >= alertConfig.threshold
+                ? 'border-orange-500 shadow-lg shadow-orange-500/20'
+                : 'border-dark-700'
+            }`}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Shield className="w-6 h-6 text-orange-400" />
+                  <Shield className={`w-6 h-6 ${
+                    (dashboardData?.summary.reviewQueueCount || 0) >= alertConfig.threshold
+                      ? 'text-orange-500 animate-pulse'
+                      : 'text-orange-400'
+                  }`} />
                   <h3 className="text-lg font-semibold">Enforcement Queue</h3>
                 </div>
                 <span 
                   className="px-3 py-1 rounded-full text-sm font-medium"
                   style={{
-                    backgroundColor: enforcementQueue.length > 0 ? '#f59e0b20' : '#10b98120',
-                    color: enforcementQueue.length > 0 ? '#f59e0b' : '#10b981'
+                    backgroundColor: (dashboardData?.summary.reviewQueueCount || 0) >= alertConfig.threshold
+                      ? '#ef444440'
+                      : enforcementQueue.length > 0 
+                        ? '#f59e0b20' 
+                        : '#10b98120',
+                    color: (dashboardData?.summary.reviewQueueCount || 0) >= alertConfig.threshold
+                      ? '#ef4444'
+                      : enforcementQueue.length > 0 
+                        ? '#f59e0b' 
+                        : '#10b981'
                   }}
                 >
                   {dashboardData?.summary.reviewQueueCount || 0} pending

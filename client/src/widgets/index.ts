@@ -13,6 +13,10 @@ export { OperationsDashboardWidget } from './OperationsDashboardWidget'
 export { TeamActivityWidget } from './TeamActivityWidget'
 export { TestCardWidget } from './TestCardWidget'
 export { YoungsMenuWidget } from './YoungsMenuWidget'
+export { TemplateWidget } from './TemplateWidget'
+
+// Re-export templates
+export * from '../templates'
 
 export interface WidgetConfig {
   [key: string]: any

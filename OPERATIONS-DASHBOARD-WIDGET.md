@@ -23,7 +23,13 @@ A comprehensive operations dashboard widget for office signage displays. Shows r
     "eventLimit": 8,
     "showEnforcement": true,
     "showHealth": true,
-    "title": "Operations Dashboard"
+    "title": "Operations Dashboard",
+    "alertSound": {
+      "enabled": true,
+      "threshold": 3,
+      "soundType": "chime",
+      "volume": 0.5
+    }
   }
 }
 ```
@@ -39,6 +45,75 @@ A comprehensive operations dashboard widget for office signage displays. Shows r
 | `showEnforcement` | boolean | `true` | Show enforcement queue section |
 | `showHealth` | boolean | `true` | Show system health section |
 | `title` | string | `"Operations Dashboard"` | Dashboard title |
+| `alertSound` | object | See below | Alert sound configuration |
+
+### Alert Sound Configuration
+
+The `alertSound` config object controls audio alerts when the enforcement queue exceeds a threshold.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enable/disable alert sounds |
+| `threshold` | number | `3` | Queue count that triggers alerts |
+| `soundType` | string | `"chime"` | Sound type: `chime`, `alert`, `urgent`, `bell`, `none`, `custom` |
+| `customSoundUrl` | string | `""` | URL for custom sound file (when `soundType` is `custom`) |
+| `volume` | number | `0.5` | Volume level (0.0 - 1.0) |
+| `repeatInterval` | number | `60000` | Minimum ms between alerts (prevents spam) |
+| `playOnIncrease` | boolean | `true` | Only play alert when queue count increases |
+
+#### Sound Types
+
+- **`chime`** - Pleasant two-tone chime (default, good for office environments)
+- **`alert`** - Attention-grabbing three-tone ascending
+- **`urgent`** - Urgent pulsing alert (for critical situations)
+- **`bell`** - Bell-like notification sound
+- **`none`** - No sound (visual indicators only)
+- **`custom`** - Use your own sound file via `customSoundUrl`
+
+#### Examples
+
+**High-threshold urgent alerts:**
+```json
+{
+  "alertSound": {
+    "enabled": true,
+    "threshold": 5,
+    "soundType": "urgent",
+    "volume": 0.7
+  }
+}
+```
+
+**Custom corporate sound:**
+```json
+{
+  "alertSound": {
+    "enabled": true,
+    "threshold": 3,
+    "soundType": "custom",
+    "customSoundUrl": "https://example.com/sounds/alert.mp3",
+    "volume": 0.6
+  }
+}
+```
+
+**Visual-only alerts (no sound):**
+```json
+{
+  "alertSound": {
+    "enabled": true,
+    "threshold": 2,
+    "soundType": "none"
+  }
+}
+```
+
+#### UI Controls
+
+- A **mute button** appears in the header when alerts are enabled
+- Click to toggle sound mute/unmute
+- Shows current threshold setting (e.g., "Alert: 3+")
+- Visual highlighting on the enforcement queue card when threshold is exceeded
 
 ## Push to Display
 

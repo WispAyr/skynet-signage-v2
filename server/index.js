@@ -321,6 +321,85 @@ app.post('/api/push/clear', (req, res) => {
   res.json({ success: true, pushed });
 });
 
+// ===== TEMPLATE DISPLAY SYSTEM =====
+// Push pre-built templates with just data - beautiful output instantly
+
+const VALID_TEMPLATES = [
+  'task-complete',
+  'alert', 
+  'metrics',
+  'announcement',
+  'daily-digest'
+];
+
+// Display template - main entry point for template-based content
+app.post('/api/display', (req, res) => {
+  const { target = 'all', template, data, duration } = req.body;
+  
+  // Validate template name
+  if (!template || !VALID_TEMPLATES.includes(template)) {
+    return res.status(400).json({ 
+      success: false, 
+      error: `Invalid template. Valid templates: ${VALID_TEMPLATES.join(', ')}` 
+    });
+  }
+  
+  // Push as widget with template config
+  const payload = { 
+    type: 'widget', 
+    content: { 
+      widget: 'template',
+      config: { template, data }
+    }, 
+    duration,
+    timestamp: Date.now() 
+  };
+  
+  let pushed = 0;
+  const pushTo = (socket) => { socket.emit('content', payload); pushed++; };
+  
+  if (target === 'all') {
+    connectedScreens.forEach((socket, screenId) => {
+      if (!EXCLUDED_FROM_ALL.has(screenId)) pushTo(socket);
+    });
+  } else {
+    const socket = connectedScreens.get(target);
+    if (socket) pushTo(socket);
+  }
+  
+  console.log(`📋 Template "${template}" pushed to ${pushed} screen(s)`);
+  res.json({ success: true, pushed, template });
+});
+
+// List available templates
+app.get('/api/templates', (req, res) => {
+  res.json({
+    templates: VALID_TEMPLATES,
+    docs: {
+      'task-complete': {
+        description: 'Display completed agent task',
+        fields: ['title', 'agent', 'agentEmoji?', 'duration?', 'highlights?', 'status', 'timestamp?']
+      },
+      'alert': {
+        description: 'Display alert/notification',
+        fields: ['level', 'title', 'message', 'source?', 'timestamp?', 'action?']
+      },
+      'metrics': {
+        description: 'Display metrics/stats grid',
+        fields: ['title', 'subtitle?', 'metrics[]', 'columns?', 'timestamp?']
+      },
+      'announcement': {
+        description: 'Display large announcement',
+        fields: ['title', 'message', 'icon?', 'style?', 'footer?']
+      },
+      'daily-digest': {
+        description: 'Display daily work summary',
+        fields: ['date', 'summary', 'items[]', 'stats?']
+      }
+    }
+  });
+});
+
 // ===== REMOTION INTEGRATION =====
 
 // Push content helper for auto-push callback
