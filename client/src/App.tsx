@@ -16,6 +16,7 @@ import { TeamActivityWidget } from './widgets/TeamActivityWidget'
 import { TestCardWidget } from './widgets/TestCardWidget'
 import { SportsWidget } from './widgets/SportsWidget'
 import { YoungsMenuWidget } from './widgets/YoungsMenuWidget'
+import { YoungsKioskWidget } from './widgets/YoungsKioskWidget'
 import { TemplateWidget } from './widgets/TemplateWidget'
 import { PlaylistPlayer, Playlist } from './widgets/PlaylistPlayer'
 import { PlaylistManager } from './components/PlaylistManager'
@@ -83,6 +84,9 @@ function WidgetRenderer({ widget, config }: { widget: string; config: any }) {
     case 'youngs-menu':
     case 'youngs':
       return <YoungsMenuWidget config={config} />
+    case 'youngs-kiosk':
+    case 'kiosk':
+      return <YoungsKioskWidget config={config} />
     case 'template':
       return <TemplateWidget config={config} />
     default:
