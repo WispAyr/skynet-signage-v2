@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import * as remotion from './remotion-integration.js';
 import { setupPlaylistRoutes } from './playlist-routes.js';
+import { PRESETS, getPreset, listPresets, getCategories } from './presets.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3400;
@@ -319,6 +320,88 @@ app.post('/api/push/clear', (req, res) => {
   }
   
   res.json({ success: true, pushed });
+});
+
+// ===== PRESET LAYOUTS API =====
+// Pre-configured control room layouts combining dashboard + cameras
+
+// List all presets
+app.get('/api/presets', (req, res) => {
+  const { category } = req.query;
+  const presets = listPresets(category || null);
+  const categories = getCategories();
+  res.json({ success: true, presets, categories });
+});
+
+// Get single preset details
+app.get('/api/presets/:id', (req, res) => {
+  const preset = getPreset(req.params.id);
+  if (!preset) {
+    return res.status(404).json({ success: false, error: 'Preset not found' });
+  }
+  res.json({ success: true, preset: { id: req.params.id, ...preset } });
+});
+
+// Push preset to screen(s)
+app.post('/api/push/preset', (req, res) => {
+  const { target = 'all', presetId, overrides = {} } = req.body;
+  
+  const preset = getPreset(presetId);
+  if (!preset) {
+    return res.status(404).json({ success: false, error: `Preset '${presetId}' not found` });
+  }
+  
+  // Merge overrides into config
+  const config = { ...preset.config };
+  if (overrides.siteIds && config.panels) {
+    // Apply siteIds override to dashboard panels
+    config.panels = config.panels.map(panel => {
+      if (panel.widget === 'operations-dashboard' && panel.config) {
+        return { ...panel, config: { ...panel.config, siteIds: overrides.siteIds } };
+      }
+      return panel;
+    });
+  }
+  if (overrides.cameras && config.panels) {
+    // Apply cameras override to camera panels
+    config.panels = config.panels.map(panel => {
+      if (panel.widget === 'camera-grid' && panel.config) {
+        return { ...panel, config: { ...panel.config, cameras: overrides.cameras } };
+      }
+      return panel;
+    });
+  }
+  
+  const payload = { 
+    type: 'widget', 
+    content: { widget: preset.widget, config },
+    timestamp: Date.now() 
+  };
+  
+  let pushed = 0;
+  const pushTo = (socket) => { socket.emit('content', payload); pushed++; };
+  
+  if (target === 'all') {
+    connectedScreens.forEach((socket, screenId) => {
+      if (!EXCLUDED_FROM_ALL.has(screenId)) pushTo(socket);
+    });
+  } else {
+    // Check if target is a group
+    const group = db.prepare('SELECT id FROM groups WHERE id = ?').get(target);
+    if (group) {
+      const screens = db.prepare('SELECT id FROM screens WHERE group_id = ?').all(target);
+      screens.forEach(s => {
+        const socket = connectedScreens.get(s.id);
+        if (socket) pushTo(socket);
+      });
+    } else {
+      const socket = connectedScreens.get(target);
+      if (socket) pushTo(socket);
+    }
+  }
+  
+  console.log(`🎯 Preset "${preset.name}" pushed to ${pushed} screen(s) [target: ${target}]`);
+  res.json({ success: true, pushed, preset: presetId, name: preset.name });
 });
 
 // ===== TEMPLATE DISPLAY SYSTEM =====

@@ -96,6 +96,12 @@ interface TeamActivityConfig {
   autoScrollInterval?: number
   title?: string
   compact?: boolean
+  // Filtering options
+  filterByAgents?: string[]         // Filter to specific agent IDs (e.g., ['friday', 'wonda'])
+  filterByPriority?: string[]       // Filter to specific priorities (e.g., ['high', 'critical'])
+  excludeAgents?: string[]          // Exclude specific agents
+  excludePriorities?: string[]      // Exclude specific priorities
+  showFilterControls?: boolean      // Show interactive filter UI (default: false for signage)
 }
 
 export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {

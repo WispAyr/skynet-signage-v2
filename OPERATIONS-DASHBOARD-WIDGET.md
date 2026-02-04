@@ -45,6 +45,73 @@ A comprehensive operations dashboard widget for office signage displays. Shows r
 | `showEnforcement` | boolean | `true` | Show enforcement queue section |
 | `showHealth` | boolean | `true` | Show system health section |
 | `title` | string | `"Operations Dashboard"` | Dashboard title |
+| `alertSound` | object | See below | Alert sound configuration for enforcement queue |
+
+### Alert Sound Configuration
+
+The widget supports configurable audio alerts when the enforcement queue exceeds a threshold. When alerts are enabled, a mute/unmute button appears in the header.
+
+```json
+{
+  "widget": "operations-dashboard",
+  "config": {
+    "siteIds": ["kyle-rise", "KCS01"],
+    "alertSound": {
+      "enabled": true,
+      "threshold": 3,
+      "soundType": "chime",
+      "volume": 0.5,
+      "repeatInterval": 60000,
+      "playOnIncrease": true
+    }
+  }
+}
+```
+
+#### Alert Sound Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `enabled` | boolean | `true` | Enable/disable alert sounds |
+| `threshold` | number | `3` | Queue count at which alerts trigger |
+| `soundType` | string | `"chime"` | Sound type: `chime`, `alert`, `urgent`, `bell`, `none`, or `custom` |
+| `customSoundUrl` | string | `""` | URL to custom sound file (when soundType is `custom`) |
+| `volume` | number | `0.5` | Volume level from 0 to 1 |
+| `repeatInterval` | number | `60000` | Minimum milliseconds between alerts (prevents spam) |
+| `playOnIncrease` | boolean | `true` | Only play when queue increases above threshold |
+
+#### Sound Types
+
+- **`chime`**: Pleasant two-tone notification (A5 → C#6)
+- **`alert`**: Attention-grabbing three-tone (C5 → E5 → G5)
+- **`urgent`**: Pulsing square wave alert (for critical situations)
+- **`bell`**: Bell-like tone (F6 with F5 harmonic)
+- **`none`**: Disabled (visual alerts only)
+- **`custom`**: Use your own sound file via `customSoundUrl`
+
+#### Visual Indicators
+
+When the enforcement queue exceeds the threshold:
+- The enforcement card gets an orange border with glow effect
+- The shield icon pulses to draw attention
+- The counter turns red for immediate visibility
+
+#### Example: Urgent Alerts for High Queue
+
+```json
+{
+  "alertSound": {
+    "enabled": true,
+    "threshold": 5,
+    "soundType": "urgent",
+    "volume": 0.7,
+    "repeatInterval": 30000,
+    "playOnIncrease": false
+  }
+}
+```
+
+This plays an urgent alert every 30 seconds while the queue stays at or above 5 items.
 | `alertSound` | object | See below | Alert sound configuration |
 
 ### Alert Sound Configuration
@@ -162,6 +229,26 @@ The widget fetches data from these POS API endpoints:
 - `GET /api/operations/dashboard` - Site stats, camera status, health
 - `GET /api/operations/events` - Recent ANPR events
 - `GET /enforcement/queue` - Pending enforcement cases
+
+## Activity Charts
+
+The dashboard includes mini activity charts showing hourly movement trends:
+
+### Per-Site Activity Charts
+Each site card displays its own mini activity chart showing:
+- Last 12 hours of movement data
+- Current hour highlighted in cyan
+- Hover tooltips with exact counts
+
+### Aggregated Activity Chart
+The System Summary section shows a combined view of all sites:
+- Aggregated hourly totals across all monitored sites
+- Current hour highlighted in cyan
+- Peak hour highlighted in amber
+- Total movements and average per hour stats
+- Visual legend for chart elements
+
+Charts auto-refresh with the dashboard data (default: every 30 seconds).
 
 ## Design
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { 
   Car, 
   Activity, 
@@ -13,8 +13,245 @@ import {
   ParkingCircle,
   Camera,
   Volume2,
-  VolumeX
+  VolumeX,
+  TrendingUp
 } from 'lucide-react'
+
+// Mini Activity Chart Component - displays hourly movement trends
+interface HourlyData {
+  hour: number
+  count: number
+}
+
+interface MiniActivityChartProps {
+  data: HourlyData[]
+  label?: string
+  color?: string
+  height?: number
+}
+
+function MiniActivityChart({ 
+  data, 
+  label = 'Hourly Activity', 
+  color = '#06b6d4', // cyan accent
+  height = 60 
+}: MiniActivityChartProps) {
+  // Get current hour for highlighting
+  const currentHour = new Date().getHours()
+  
+  // Normalize data: fill in missing hours and sort
+  const normalizedData = useMemo(() => {
+    // Create a map of existing data
+    const dataMap = new Map(data.map(d => [d.hour, d.count]))
+    
+    // Generate all 24 hours, filling gaps with 0
+    const fullData: HourlyData[] = []
+    for (let h = 0; h < 24; h++) {
+      fullData.push({ hour: h, count: dataMap.get(h) || 0 })
+    }
+    
+    // Show last 12 hours ending at current hour
+    const startHour = (currentHour - 11 + 24) % 24
+    const reorderedData: HourlyData[] = []
+    for (let i = 0; i < 12; i++) {
+      const h = (startHour + i) % 24
+      reorderedData.push(fullData[h])
+    }
+    
+    return reorderedData
+  }, [data, currentHour])
+  
+  // Calculate max for scaling
+  const maxCount = Math.max(...normalizedData.map(d => d.count), 1)
+  
+  // Calculate total for the period shown
+  const totalMovements = normalizedData.reduce((sum, d) => sum + d.count, 0)
+  
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 text-xs text-gray-400">
+          <TrendingUp className="w-3 h-3" />
+          <span>{label}</span>
+        </div>
+        <span className="text-xs text-gray-500">
+          {totalMovements} movements (12h)
+        </span>
+      </div>
+      
+      <div 
+        className="flex items-end gap-[2px] rounded-lg bg-dark-700/50 p-2"
+        style={{ height }}
+      >
+        {normalizedData.map((item, idx) => {
+          const barHeight = maxCount > 0 ? (item.count / maxCount) * 100 : 0
+          const isCurrentHour = item.hour === currentHour
+          
+          return (
+            <div
+              key={item.hour}
+              className="flex-1 flex flex-col items-center justify-end h-full group relative"
+            >
+              {/* Bar */}
+              <div
+                className="w-full rounded-t transition-all duration-300 hover:opacity-80"
+                style={{
+                  height: `${Math.max(barHeight, 2)}%`,
+                  backgroundColor: isCurrentHour ? '#22d3ee' : color,
+                  opacity: isCurrentHour ? 1 : 0.7,
+                  boxShadow: isCurrentHour ? '0 0 8px #22d3ee60' : 'none'
+                }}
+              />
+              
+              {/* Tooltip on hover */}
+              <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
+                <div className="bg-dark-600 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
+                  {String(item.hour).padStart(2, '0')}:00 - {item.count} movements
+                </div>
+              </div>
+              
+              {/* Hour label (show every 3rd hour) */}
+              {idx % 3 === 0 && (
+                <div className="text-[9px] text-gray-500 mt-1">
+                  {String(item.hour).padStart(2, '0')}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// Aggregated chart for all sites combined
+interface AggregatedActivityChartProps {
+  sites: SiteData[]
+  height?: number
+}
+
+function AggregatedActivityChart({ sites, height = 80 }: AggregatedActivityChartProps) {
+  const currentHour = new Date().getHours()
+  
+  // Aggregate hourly data from all sites
+  const aggregatedData = useMemo(() => {
+    const hourlyTotals = new Map<number, number>()
+    
+    sites.forEach(site => {
+      site.stats.hourlyActivity.forEach(({ hour, count }) => {
+        hourlyTotals.set(hour, (hourlyTotals.get(hour) || 0) + count)
+      })
+    })
+    
+    // Create full 24-hour data
+    const fullData: HourlyData[] = []
+    for (let h = 0; h < 24; h++) {
+      fullData.push({ hour: h, count: hourlyTotals.get(h) || 0 })
+    }
+    
+    // Show last 12 hours
+    const startHour = (currentHour - 11 + 24) % 24
+    const reorderedData: HourlyData[] = []
+    for (let i = 0; i < 12; i++) {
+      const h = (startHour + i) % 24
+      reorderedData.push(fullData[h])
+    }
+    
+    return reorderedData
+  }, [sites, currentHour])
+  
+  const maxCount = Math.max(...aggregatedData.map(d => d.count), 1)
+  const totalMovements = aggregatedData.reduce((sum, d) => sum + d.count, 0)
+  const avgPerHour = Math.round(totalMovements / 12)
+  
+  // Find peak hour
+  const peakHour = aggregatedData.reduce((peak, curr) => 
+    curr.count > peak.count ? curr : peak
+  , aggregatedData[0])
+  
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-sm text-gray-300">
+          <TrendingUp className="w-4 h-4 text-cyan-400" />
+          <span className="font-medium">Activity Trends (12h)</span>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-gray-500">
+          <span>{totalMovements} total</span>
+          <span>~{avgPerHour}/hr avg</span>
+        </div>
+      </div>
+      
+      <div 
+        className="flex items-end gap-1 rounded-xl bg-dark-700/30 p-3"
+        style={{ height }}
+      >
+        {aggregatedData.map((item, idx) => {
+          const barHeight = maxCount > 0 ? (item.count / maxCount) * 100 : 0
+          const isCurrentHour = item.hour === currentHour
+          const isPeakHour = item.hour === peakHour.hour && item.count > 0
+          
+          // Color gradient based on activity level
+          const intensity = maxCount > 0 ? item.count / maxCount : 0
+          const barColor = isCurrentHour 
+            ? '#22d3ee'  // cyan for current
+            : isPeakHour
+            ? '#fbbf24'  // amber for peak
+            : `rgba(6, 182, 212, ${0.4 + intensity * 0.6})` // cyan with intensity
+          
+          return (
+            <div
+              key={item.hour}
+              className="flex-1 flex flex-col items-center justify-end h-full group relative"
+            >
+              {/* Bar */}
+              <div
+                className="w-full rounded-t-sm transition-all duration-300"
+                style={{
+                  height: `${Math.max(barHeight, 3)}%`,
+                  backgroundColor: barColor,
+                  boxShadow: isCurrentHour 
+                    ? '0 0 10px #22d3ee60' 
+                    : isPeakHour
+                    ? '0 0 8px #fbbf2440'
+                    : 'none'
+                }}
+              />
+              
+              {/* Tooltip */}
+              <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
+                <div className="bg-dark-600 text-white text-xs px-2 py-1.5 rounded-lg shadow-lg whitespace-nowrap border border-dark-500">
+                  <div className="font-medium">{String(item.hour).padStart(2, '0')}:00</div>
+                  <div className="text-gray-400">{item.count} movements</div>
+                  {isPeakHour && <div className="text-amber-400">⚡ Peak hour</div>}
+                </div>
+              </div>
+              
+              {/* Hour labels */}
+              {idx % 2 === 0 && (
+                <div className={`text-[10px] mt-1 ${isCurrentHour ? 'text-cyan-400 font-medium' : 'text-gray-500'}`}>
+                  {String(item.hour).padStart(2, '0')}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-4 mt-2 text-[10px] text-gray-500">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-sm bg-cyan-400" />
+          <span>Current</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-sm bg-amber-400" />
+          <span>Peak</span>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Built-in alert sound types
 type AlertSoundType = 'chime' | 'alert' | 'urgent' | 'bell' | 'none' | 'custom'
@@ -466,6 +703,18 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
                 </div>
               </div>
 
+              {/* Mini Activity Chart for this site */}
+              {site.stats.hourlyActivity && site.stats.hourlyActivity.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-dark-700">
+                  <MiniActivityChart 
+                    data={site.stats.hourlyActivity} 
+                    label="Site Activity"
+                    color="#06b6d4"
+                    height={50}
+                  />
+                </div>
+              )}
+
               {/* Camera Status */}
               {site.cameras.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-dark-700">
@@ -501,7 +750,7 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
               <Server className="w-6 h-6 text-accent" />
               <h3 className="text-lg font-semibold">System Summary</h3>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <div className="text-4xl font-bold text-accent">{currentOccupancy}</div>
                 <div className="text-sm text-gray-500">Current Occupancy</div>
@@ -511,6 +760,13 @@ export function OperationsDashboardWidget({ config }: { config: OperationsDashbo
                 <div className="text-sm text-gray-500">Total Movements</div>
               </div>
             </div>
+            
+            {/* Mini Activity Chart - Aggregated from all sites */}
+            {dashboardData && dashboardData.sites.length > 0 && (
+              <div className="pt-4 border-t border-dark-700">
+                <AggregatedActivityChart sites={dashboardData.sites} height={70} />
+              </div>
+            )}
           </div>
         </div>
 
