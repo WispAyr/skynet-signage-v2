@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Young's Food Emporium</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Lato', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      color: #fff;
+      overflow: hidden;
+    }
+    
+    .container {
+      padding: 30px 40px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 25px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid rgba(255, 193, 68, 0.4);
+    }
+    
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.2em;
+      font-weight: 700;
+      color: #ffc144;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+      letter-spacing: 3px;
+    }
+    
+    .subtitle {
+      font-size: 1.1em;
+      color: rgba(255,255,255,0.7);
+      margin-top: 8px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    .menu-section {
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      padding: 18px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .menu-section h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4em;
+      color: #ffc144;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(255,193,68,0.3);
+      text-align: center;
+    }
+    
+    .menu-items {
+      flex: 1;
+      overflow: hidden;
+    }
+    
+    .menu-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 6px 0;
+      border-bottom: 1px dotted rgba(255,255,255,0.1);
+    }
+    
+    .menu-item:last-child {
+      border-bottom: none;
+    }
+    
+    .item-name {
+      font-size: 0.95em;
+      color: rgba(255,255,255,0.9);
+      flex: 1;
+    }
+    
+    .item-price {
+      font-weight: 700;
+      color: #7fff7f;
+      font-size: 0.95em;
+      margin-left: 10px;
+      white-space: nowrap;
+    }
+    
+    .hot-drinks { grid-column: 1; grid-row: 1 / 2; }
+    .soup { grid-column: 1; grid-row: 2 / 3; }
+    .jackets { grid-column: 2; grid-row: 1 / 3; }
+    .chips { grid-column: 3; grid-row: 1 / 2; }
+    .hot-meals { grid-column: 3 / 5; grid-row: 2 / 3; }
+    .specials { grid-column: 4; grid-row: 1 / 2; }
+    
+    .specials {
+      background: linear-gradient(135deg, rgba(255,193,68,0.2) 0%, rgba(255,107,107,0.2) 100%);
+      border: 2px solid rgba(255,193,68,0.4);
+    }
+    
+    .specials h2 {
+      color: #ff6b6b;
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.5);
+      font-size: 0.9em;
+    }
+    
+    .pulse {
+      animation: pulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🍽️ Young's Food Emporium</h1>
+      <p class="subtitle">Fresh • Homemade • Delicious</p>
+    </header>
+    
+    <div class="menu-grid">
+      <div class="menu-section hot-drinks">
+        <h2>☕ Hot Drinks</h2>
+        <div class="menu-items">
+          <div class="menu-item"><span class="item-name">Tea</span><span class="item-price">£1.40</span></div>
+          <div class="menu-item"><span class="item-name">Coffee</span><span class="item-price">£1.40</span></div>
+          <div class="menu-item"><span class="item-name">Latte</span><span class="item-price">£2.20</span></div>
+          <div class="menu-item"><span class="item-name">Cappuccino</span><span class="item-price">£2.40</span></div>
+          <div class="menu-item"><span class="item-name">Hot Chocolate</span><span class="item-price">£2.40</span></div>
+          <div class="menu-item"><span class="item-name">Espresso</span><span class="item-price">£1.80</span></div>
+          <div class="menu-item"><span class="item-name">+ Flavour Shot</span><span class="item-price">£0.50</span></div>
+        </div>
+      </div>
+      
+      <div class="menu-section soup">
+        <h2>🍲 Homemade Soup</h2>
+        <div class="menu-items">
+          <div class="menu-item"><span class="item-name">Regular</span><span class="item-price">£2.50</span></div>
+          <div class="menu-item"><span class="item-name">Large</span><span class="item-price">£2.90</span></div>
+          <div class="menu-item"><span class="item-name">+ Buttered Roll</span><span class="item-price">£0.50</span></div>
+        </div>
+      </div>
+      
+      <div class="menu-section jackets">
+        <h2>🥔 Baked Potatoes</h2>
+        <div class="menu-items">
+          <div class="menu-item"><span class="item-name">Plain Jacket</span><span class="item-price">£3.70</span></div>
+          <div class="menu-item"><span class="item-name">Cheese</span><span class="item-price">£4.80</span></div>
+          <div class="menu-item"><span class="item-name">Beans</span><span class="item-price">£4.80</span></div>
+          <div class="menu-item"><span class="item-name">Cheese & Beans</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">Coleslaw</span><span class="item-price">£4.80</span></div>
+          <div class="menu-item"><span class="item-name">Cheese & Coleslaw</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">Egg Mayo</span><span class="item-price">£4.80</span></div>
+          <div class="menu-item"><span class="item-name">Chicken (Various)</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">Tuna (Various)</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">Chicken Curry</span><span class="item-price">£6.30</span></div>
+          <div class="menu-item"><span class="item-name">Cheese & Bacon</span><span class="item-price">£5.80</span></div>
+        </div>
+      </div>
+      
+      <div class="menu-section chips">
+        <h2>🍟 Chips</h2>
+        <div class="menu-items">
+          <div class="menu-item"><span class="item-name">Chips</span><span class="item-price">£3/£4</span></div>
+          <div class="menu-item"><span class="item-name">Salt + Chilli</span><span class="item-price">£3.50/£4.50</span></div>
+          <div class="menu-item"><span class="item-name">Salt + Pepper</span><span class="item-price">£3.50/£4.50</span></div>
+          <div class="menu-item"><span class="item-name">Cajun</span><span class="item-price">£3.50/£4.50</span></div>
+          <div class="menu-item"><span class="item-name">+ Cheese</span><span class="item-price">£4/£5</span></div>
+          <div class="menu-item"><span class="item-name">+ Curry Sauce</span><span class="item-price">£4/£5</span></div>
+        </div>
+      </div>
+      
+      <div class="menu-section specials">
+        <h2>⭐ Today's Picks</h2>
+        <div class="menu-items">
+          <div class="menu-item pulse"><span class="item-name">🔥 Chicken Curry + Rice</span><span class="item-price">£5.80</span></div>
+          <div class="menu-item"><span class="item-name">🥧 Steak Pie + Chips</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">🧀 Macaroni + Chips</span><span class="item-price">£5.30</span></div>
+        </div>
+      </div>
+      
+      <div class="menu-section hot-meals">
+        <h2>🔥 Hot Meals</h2>
+        <div class="menu-items" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0 30px;">
+          <div class="menu-item"><span class="item-name">Chicken Curry + Chips</span><span class="item-price">£5.80</span></div>
+          <div class="menu-item"><span class="item-name">Pie + Chips</span><span class="item-price">£4.80</span></div>
+          <div class="menu-item"><span class="item-name">Chicken Curry + Rice</span><span class="item-price">£5.80</span></div>
+          <div class="menu-item"><span class="item-name">Pie, Chips + Beans</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">Curry, Rice + Chips</span><span class="item-price">£6.30</span></div>
+          <div class="menu-item"><span class="item-name">Steak Pie + Chips</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">Macaroni</span><span class="item-price">£5.30</span></div>
+          <div class="menu-item"><span class="item-name">Links + Chips</span><span class="item-price">£4.80</span></div>
+        </div>
+      </div>
+    </div>
+    
+    <footer>
+      Updated live from Monday.com • Young's Food Emporium, Kyle Centre
+    </footer>
+  </div>
+</body>
+</html>

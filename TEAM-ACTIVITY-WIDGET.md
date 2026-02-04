@@ -42,7 +42,59 @@ interface TeamActivityConfig {
   autoScrollInterval?: number // Default: 5000ms
   title?: string             // Default: 'Team Activity'
   compact?: boolean          // Default: false (hide descriptions)
+  
+  // Filtering options
+  filterByAgents?: string[]      // Filter to specific agent IDs (e.g., ['friday', 'wonda'])
+  filterByPriority?: string[]    // Filter to specific priorities ('critical', 'high', 'medium', 'low')
+  excludeAgents?: string[]       // Exclude specific agents from display
+  excludePriorities?: string[]   // Exclude specific priority levels
+  showFilterControls?: boolean   // Show interactive filter UI (default: false for signage)
 }
+```
+
+### Filtering Examples
+
+**Show only high-priority tasks from the dev team:**
+```bash
+curl -X POST http://localhost:3400/api/push/widget \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "all",
+    "widget": "team-activity",
+    "config": {
+      "filterByAgents": ["friday", "jarvis", "archie"],
+      "filterByPriority": ["high", "critical"],
+      "title": "Dev Team High Priority"
+    }
+  }'
+```
+
+**Exclude low-priority tasks:**
+```bash
+curl -X POST http://localhost:3400/api/push/widget \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "all",
+    "widget": "team-activity",
+    "config": {
+      "excludePriorities": ["low"]
+    }
+  }'
+```
+
+**Interactive mode with filter controls (for touch displays):**
+```bash
+curl -X POST http://localhost:3400/api/push/widget \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target": "reception",
+    "widget": "team-activity",
+    "config": {
+      "showFilterControls": true,
+      "autoScroll": false
+    }
+  }'
+```
 ```
 
 ### Standalone HTML Template

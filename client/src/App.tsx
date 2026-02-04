@@ -351,9 +351,9 @@ function AdminMode() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="flex items-center justify-between p-6 border-b border-dark-700">
+      <header className="flex-shrink-0 flex items-center justify-between p-6 border-b border-dark-700">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 bg-accent/20 border border-accent rounded-lg flex items-center justify-center">
             <Monitor className="w-5 h-5 text-accent" />
@@ -413,7 +413,7 @@ function AdminMode() {
 
       {/* Screens Tab */}
       {activeTab === 'screens' && (
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 overflow-y-auto">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Screens list */}
         <div className="lg:col-span-2 bg-dark-800 rounded-xl border border-dark-600 p-6">

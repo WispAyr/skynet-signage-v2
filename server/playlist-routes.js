@@ -479,7 +479,8 @@ export function setupPlaylistRoutes(app, db, io, connectedScreens) {
       { id: 'camera-grid', name: 'Camera Grid', description: 'Multi-camera view', icon: 'grid', defaultConfig: { cameras: ['kyle-rise-front', 'kyle-rise-ptz'] } },
       { id: 'occupancy', name: 'Occupancy', description: 'Parking occupancy display', icon: 'parking', defaultConfig: { siteName: 'Kyle Rise', capacity: 50 } },
       { id: 'stats', name: 'Stats', description: 'Statistics dashboard', icon: 'bar-chart', defaultConfig: {} },
-      { id: 'operations-dashboard', name: 'Operations Dashboard', description: 'Full operations overview', icon: 'activity', defaultConfig: {} },
+      { id: 'operations-dashboard', name: 'Operations Dashboard', description: 'Full operations overview', icon: 'activity', defaultConfig: { siteIds: ['kyle-rise', 'KCS01'] } },
+      { id: 'team-activity', name: 'Team Activity', description: 'HQ task completions and agent activity feed', icon: 'users', defaultConfig: { hqApiUrl: 'http://localhost:3800', refreshInterval: 30000, maxItems: 15 } },
     ];
     
     res.json({ success: true, data: widgets });

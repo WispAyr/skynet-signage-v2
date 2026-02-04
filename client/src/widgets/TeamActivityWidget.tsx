@@ -104,6 +104,15 @@ interface TeamActivityConfig {
   showFilterControls?: boolean      // Show interactive filter UI (default: false for signage)
 }
 
+// Priority level order for display
+const PRIORITY_ORDER = ['critical', 'high', 'medium', 'low']
+const PRIORITY_COLORS: Record<string, string> = {
+  critical: '#EF4444',
+  high: '#F97316',
+  medium: '#F59E0B',
+  low: '#22C55E'
+}
+
 export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
   const hqApiUrl = config.hqApiUrl || 'http://localhost:3800'
   const refreshInterval = config.refreshInterval || 30000
@@ -114,6 +123,13 @@ export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
   const title = config.title || 'Team Activity'
   const compact = config.compact || false
   
+  // Filter configuration
+  const filterByAgents = config.filterByAgents || []
+  const filterByPriority = config.filterByPriority || []
+  const excludeAgents = config.excludeAgents || []
+  const excludePriorities = config.excludePriorities || []
+  const showFilterControls = config.showFilterControls || false
+  
   const [tasks, setTasks] = useState<Task[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
   const [mondayConnected, setMondayConnected] = useState(true)
@@ -121,6 +137,10 @@ export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [scrollPosition, setScrollPosition] = useState(0)
+  
+  // Interactive filter state (when showFilterControls is true)
+  const [activeAgentFilter, setActiveAgentFilter] = useState<string | null>(null)
+  const [activePriorityFilter, setActivePriorityFilter] = useState<string | null>(null)
   
   const scrollRef = useRef<HTMLDivElement>(null)
   const animationRef = useRef<number>()
@@ -141,10 +161,49 @@ export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
       const agentsData: Agent[] = await agentsRes.json()
       
       // Filter and sort tasks - get completed ones first, then recent activity
-      const completedTasks = tasksData
+      let completedTasks = tasksData
         .filter(t => t.status === 'done' && t.completedAt)
         .sort((a, b) => new Date(b.completedAt!).getTime() - new Date(a.completedAt!).getTime())
-        .slice(0, maxItems)
+      
+      // Apply agent filters (from config)
+      if (filterByAgents.length > 0) {
+        completedTasks = completedTasks.filter(t => 
+          t.assignedTo && filterByAgents.includes(t.assignedTo)
+        )
+      }
+      
+      // Apply agent exclusions (from config)
+      if (excludeAgents.length > 0) {
+        completedTasks = completedTasks.filter(t => 
+          !t.assignedTo || !excludeAgents.includes(t.assignedTo)
+        )
+      }
+      
+      // Apply priority filters (from config)
+      if (filterByPriority.length > 0) {
+        completedTasks = completedTasks.filter(t => 
+          filterByPriority.includes(t.priority?.toLowerCase() || 'medium')
+        )
+      }
+      
+      // Apply priority exclusions (from config)
+      if (excludePriorities.length > 0) {
+        completedTasks = completedTasks.filter(t => 
+          !excludePriorities.includes(t.priority?.toLowerCase() || 'medium')
+        )
+      }
+      
+      // Apply interactive filters (if enabled)
+      if (activeAgentFilter) {
+        completedTasks = completedTasks.filter(t => t.assignedTo === activeAgentFilter)
+      }
+      if (activePriorityFilter) {
+        completedTasks = completedTasks.filter(t => 
+          (t.priority?.toLowerCase() || 'medium') === activePriorityFilter
+        )
+      }
+      
+      completedTasks = completedTasks.slice(0, maxItems)
       
       setTasks(completedTasks)
       setAgents(agentsData)
@@ -156,7 +215,7 @@ export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
       setError('Failed to connect to HQ')
       setLoading(false)
     }
-  }, [hqApiUrl, maxItems])
+  }, [hqApiUrl, maxItems, filterByAgents, filterByPriority, excludeAgents, excludePriorities, activeAgentFilter, activePriorityFilter])
   
   // Initial fetch and refresh interval
   useEffect(() => {
@@ -254,6 +313,34 @@ export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
               </span>
             ))}
           </h1>
+          {/* Active filter indicators */}
+          {(filterByAgents.length > 0 || filterByPriority.length > 0 || activeAgentFilter || activePriorityFilter) && (
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-gray-500">|</span>
+              {(filterByAgents.length > 0 || activeAgentFilter) && (
+                <span className="flex items-center gap-1 text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded-full">
+                  <User className="w-3 h-3" />
+                  {activeAgentFilter ? (
+                    <span className="capitalize">{activeAgentFilter}</span>
+                  ) : (
+                    <span>{filterByAgents.join(', ')}</span>
+                  )}
+                </span>
+              )}
+              {(filterByPriority.length > 0 || activePriorityFilter) && (
+                <span 
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full capitalize"
+                  style={{
+                    backgroundColor: `${PRIORITY_COLORS[activePriorityFilter || filterByPriority[0]] || '#F59E0B'}20`,
+                    color: PRIORITY_COLORS[activePriorityFilter || filterByPriority[0]] || '#F59E0B'
+                  }}
+                >
+                  <Zap className="w-3 h-3" />
+                  {activePriorityFilter || filterByPriority.join(', ')}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         
         <div className="flex items-center gap-6">
@@ -287,6 +374,92 @@ export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
           </div>
         </div>
       </div>
+      
+      {/* Filter Controls (optional) */}
+      {showFilterControls && (
+        <div className="flex items-center gap-4 px-6 py-3 bg-gray-800/30 border-b border-gray-800">
+          {/* Agent Filter */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wide">Agent:</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setActiveAgentFilter(null)}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  !activeAgentFilter 
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                All
+              </button>
+              {agents.slice(0, 8).map(agent => (
+                <button
+                  key={agent.id}
+                  onClick={() => setActiveAgentFilter(activeAgentFilter === agent.id ? null : agent.id)}
+                  className={`px-2 py-1 text-xs rounded transition-colors flex items-center gap-1 ${
+                    activeAgentFilter === agent.id 
+                      ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50' 
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                  title={AGENT_ROLES[agent.id] || agent.role}
+                >
+                  <span>{AGENT_EMOJIS[agent.id] || '🤖'}</span>
+                  <span className="capitalize hidden sm:inline">{agent.id}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Priority Filter */}
+          <div className="flex items-center gap-2 border-l border-gray-700 pl-4">
+            <span className="text-xs text-gray-500 uppercase tracking-wide">Priority:</span>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setActivePriorityFilter(null)}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  !activePriorityFilter 
+                    ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/50' 
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                All
+              </button>
+              {PRIORITY_ORDER.map(priority => (
+                <button
+                  key={priority}
+                  onClick={() => setActivePriorityFilter(activePriorityFilter === priority ? null : priority)}
+                  className={`px-2 py-1 text-xs rounded capitalize transition-colors ${
+                    activePriorityFilter === priority 
+                      ? 'border' 
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                  style={activePriorityFilter === priority ? {
+                    backgroundColor: `${PRIORITY_COLORS[priority]}30`,
+                    color: PRIORITY_COLORS[priority],
+                    borderColor: `${PRIORITY_COLORS[priority]}80`
+                  } : {}}
+                >
+                  {priority}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Active filters indicator */}
+          {(activeAgentFilter || activePriorityFilter) && (
+            <button
+              onClick={() => {
+                setActiveAgentFilter(null)
+                setActivePriorityFilter(null)
+              }}
+              className="ml-auto text-xs text-gray-400 hover:text-white flex items-center gap-1"
+            >
+              <span>Clear filters</span>
+              <span className="text-cyan-400">×</span>
+            </button>
+          )}
+        </div>
+      )}
       
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -346,10 +519,24 @@ export function TeamActivityWidget({ config }: { config: TeamActivityConfig }) {
                       <h3 className="font-medium text-gray-100 line-clamp-1">
                         {task.title}
                       </h3>
-                      <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full ml-2">
-                        <CheckCircle2 className="w-3 h-3" />
-                        Done
-                      </span>
+                      <div className="flex items-center gap-2 ml-2">
+                        {/* Priority badge */}
+                        {task.priority && (
+                          <span 
+                            className="text-xs px-2 py-0.5 rounded-full capitalize"
+                            style={{
+                              backgroundColor: `${PRIORITY_COLORS[task.priority.toLowerCase()] || '#64748B'}20`,
+                              color: PRIORITY_COLORS[task.priority.toLowerCase()] || '#64748B'
+                            }}
+                          >
+                            {task.priority}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                          <CheckCircle2 className="w-3 h-3" />
+                          Done
+                        </span>
+                      </div>
                     </div>
                     
                     {!compact && task.output && (
