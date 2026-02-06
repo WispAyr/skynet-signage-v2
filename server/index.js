@@ -149,6 +149,9 @@ app.get('/_panel', (req, res) => {
 // Serve static client build
 app.use(express.static(join(__dirname, '../client/dist')));
 
+// Serve video thumbnails
+app.use('/thumbnails', express.static(join(__dirname, 'thumbnails')));
+
 // Serve video files from NAS
 const VIDEO_BASE = '/Volumes/Parkwise/Skynet/video';
 app.use('/video', (req, res, next) => {
@@ -594,9 +597,10 @@ app.get('/api/content/templates', (req, res) => {
 });
 
 app.get('/api/content/videos', async (req, res) => {
-  const { readdirSync, statSync } = await import('fs');
+  const { readdirSync, statSync, existsSync } = await import('fs');
   const { join, basename, extname } = await import('path');
   const videoBase = '/Volumes/Parkwise/Skynet/video';
+  const thumbDir = join(__dirname, 'thumbnails');
   const videos = [];
   
   try {
@@ -610,6 +614,8 @@ app.get('/api/content/videos', async (req, res) => {
             if (stat.isDirectory()) {
               scanDir(full, entry);
             } else if (['.mp4', '.webm', '.mov', '.avi'].includes(extname(entry).toLowerCase())) {
+              const thumbName = entry.replace(/\.[^.]+$/, '.jpg');
+              const hasThumb = existsSync(join(thumbDir, thumbName));
               videos.push({
                 id: Buffer.from(full).toString('base64url').slice(0, 12),
                 filename: entry,
@@ -617,6 +623,7 @@ app.get('/api/content/videos', async (req, res) => {
                 category: category || 'uncategorised',
                 size: stat.size,
                 modified: stat.mtimeMs,
+                thumbnail: hasThumb ? `/thumbnails/${thumbName}` : null,
               });
             }
           } catch {}

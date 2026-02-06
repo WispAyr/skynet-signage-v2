@@ -22,9 +22,11 @@ interface Template {
 interface VideoFile {
   id: string
   filename: string
+  path: string
   category: string
   size: number
   modified: number
+  thumbnail: string | null
 }
 
 const WIDGET_ICONS: Record<string, any> = {
@@ -84,6 +86,85 @@ const TEMPLATE_DEMO_DATA: Record<string, any> = {
       { title: 'New EV Chargers', message: 'Fast chargers on Level 1', priority: 'info' },
     ],
   },
+}
+
+// Video card with thumbnail + hover-to-play
+function VideoCard({ video, onPush, onPreview }: { video: VideoFile; onPush: () => void; onPreview: () => void }) {
+  const [hovering, setHovering] = useState(false)
+  const videoEl = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    if (hovering && videoEl.current) {
+      videoEl.current.currentTime = 0
+      videoEl.current.play().catch(() => {})
+    } else if (!hovering && videoEl.current) {
+      videoEl.current.pause()
+    }
+  }, [hovering])
+
+  const videoUrl = `/video/${video.path || video.filename}`
+
+  return (
+    <div className="glass glass-hover rounded-xl overflow-hidden group">
+      {/* Thumbnail / hover video preview */}
+      <div 
+        className="h-36 bg-dark-800 relative cursor-pointer overflow-hidden"
+        onMouseEnter={() => setHovering(true)}
+        onMouseLeave={() => setHovering(false)}
+        onClick={onPreview}
+      >
+        {/* Thumbnail image */}
+        {video.thumbnail ? (
+          <img 
+            src={video.thumbnail} 
+            alt={video.filename}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${hovering ? 'opacity-0' : 'opacity-100'}`}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-dark-700 to-dark-900">
+            <FileVideo className="w-10 h-10 text-gray-600" />
+          </div>
+        )}
+        
+        {/* Hover video (lazy loads on hover) */}
+        {hovering && (
+          <video 
+            ref={videoEl}
+            src={videoUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            muted loop playsInline preload="none"
+          />
+        )}
+
+        {/* Play overlay */}
+        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full bg-black/60 flex items-center justify-center backdrop-blur-sm">
+            <Play className="w-5 h-5 text-white ml-0.5" />
+          </div>
+        </div>
+
+        {/* Duration / size badge */}
+        <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 rounded text-[10px] text-gray-300 backdrop-blur-sm">
+          {(video.size / 1024 / 1024).toFixed(1)} MB
+        </div>
+      </div>
+
+      {/* Info bar */}
+      <div className="p-3 flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate" title={video.filename}>
+            {video.filename.replace(/\.[^.]+$/, '').replace(/-/g, ' ').replace(/\d{13}/g, '').trim()}
+          </div>
+          <div className="text-[10px] text-gray-500 truncate">{video.filename}</div>
+        </div>
+        <button onClick={(e) => { e.stopPropagation(); onPush() }}
+          className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition flex-shrink-0"
+          title="Push to screens">
+          <Play className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export function ContentPage() {
@@ -321,46 +402,41 @@ export function ContentPage() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {vids.map(video => (
-                    <div key={video.filename} className="glass glass-hover rounded-xl overflow-hidden group">
-                      {/* Video preview thumbnail */}
-                      <div 
-                        className="h-32 bg-dark-800 relative cursor-pointer flex items-center justify-center"
-                        onClick={() => setVideoPreview(`/video/${video.filename}`)}
-                      >
-                        {videoPreview === `/video/${video.filename}` ? (
-                          <video 
-                            ref={videoRef}
-                            src={`/video/${video.filename}`} 
-                            className="w-full h-full object-cover" 
-                            autoPlay muted={videoMuted} loop
-                          />
-                        ) : (
-                          <>
-                            <FileVideo className="w-10 h-10 text-gray-600" />
-                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                              <Play className="w-8 h-8 text-white" />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {/* Info bar */}
-                      <div className="p-3 flex items-center gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{video.filename}</div>
-                          <div className="text-xs text-gray-500">{(video.size / 1024 / 1024).toFixed(1)} MB</div>
-                        </div>
-                        <button onClick={() => pushVideo(video.filename)}
-                          className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition flex-shrink-0"
-                          title="Push to screens">
-                          <Play className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
+                    <VideoCard 
+                      key={video.filename} 
+                      video={video} 
+                      onPush={() => pushVideo(video.filename)}
+                      onPreview={() => setVideoPreview(`/video/${video.path || video.filename}`)}
+                    />
                   ))}
                 </div>
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* ===== VIDEO PREVIEW MODAL ===== */}
+      {videoPreview && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-8" onClick={() => setVideoPreview(null)}>
+          <div className="relative w-full max-w-5xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setVideoPreview(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition">
+              <X className="w-5 h-5" />
+            </button>
+            <button onClick={() => setVideoMuted(!videoMuted)}
+              className="absolute top-4 right-16 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition">
+              {videoMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+            <video 
+              src={videoPreview} 
+              className="w-full h-full object-contain" 
+              autoPlay 
+              muted={videoMuted} 
+              loop 
+              controls 
+            />
+          </div>
         </div>
       )}
 
