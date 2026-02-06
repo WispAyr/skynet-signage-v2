@@ -165,6 +165,54 @@ for (const [id, data] of Object.entries(renames)) {
   }
 }
 
+// ===== 8. Player Sync — New Screen Columns =====
+console.log('\n🔗 Adding player/sync columns to screens...');
+const syncColumns = [
+  { name: 'sync_group', sql: "ALTER TABLE screens ADD COLUMN sync_group TEXT" },
+  { name: 'platform', sql: "ALTER TABLE screens ADD COLUMN platform TEXT DEFAULT 'browser'" },
+  { name: 'resolution', sql: "ALTER TABLE screens ADD COLUMN resolution TEXT" },
+  { name: 'orientation', sql: "ALTER TABLE screens ADD COLUMN orientation TEXT DEFAULT 'landscape'" },
+  { name: 'capabilities', sql: "ALTER TABLE screens ADD COLUMN capabilities TEXT DEFAULT '{}'" },
+];
+
+for (const col of syncColumns) {
+  try {
+    db.exec(col.sql);
+    console.log(`  ✅ Added ${col.name}`);
+  } catch (e) {
+    if (e.message.includes('duplicate column')) {
+      console.log(`  ⏭️  ${col.name} already exists`);
+    } else {
+      throw e;
+    }
+  }
+}
+
+// ===== 9. Sync Groups Table =====
+console.log('\n🔗 Creating sync_groups table...');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS sync_groups (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    mode TEXT DEFAULT 'mirror',
+    leader_screen_id TEXT,
+    playlist_id TEXT,
+    config TEXT DEFAULT '{}',
+    created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE SET NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_screens_sync_group ON screens(sync_group);
+`);
+console.log('  ✅ sync_groups table created');
+
+// Pre-populate a pavilion sync group
+const pavilionGroup = db.prepare(`
+  INSERT OR IGNORE INTO sync_groups (id, name, mode, config)
+  VALUES ('pavilion', 'Pavilion Screens', 'mirror', '{"description":"3 x screens at the pavilion — synchronised playback"}')
+`);
+pavilionGroup.run();
+console.log('  ✅ Pavilion sync group seeded');
+
 // ===== Done =====
 console.log('\n✨ Migration complete!');
 console.log('\nCurrent screens:');

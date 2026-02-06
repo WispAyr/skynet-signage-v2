@@ -11,6 +11,8 @@ import * as remotion from './remotion-integration.js';
 import { setupPlaylistRoutes } from './playlist-routes.js';
 import { setupLocationRoutes } from './location-routes.js';
 import { PRESETS, getPreset, listPresets, getCategories } from './presets.js';
+import { ContextEngine } from './context-engine.js';
+import { setupSyncEngine } from './sync-engine.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3400;
@@ -94,6 +96,10 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// ===== CONTEXT ENGINE =====
+const contextEngine = new ContextEngine(db, io);
+contextEngine.setupRoutes(app);
+
 // Panel Protocol — self-registration for Skynet Command Extension
 app.get('/_panel', (req, res) => {
   const screens = db.prepare('SELECT id, name, status, type FROM screens').all();
@@ -169,6 +175,9 @@ setupPlaylistRoutes(app, db, io, connectedScreens);
 
 // ===== LOCATION & SETTINGS ROUTES =====
 setupLocationRoutes(app, db, io, connectedScreens);
+
+// ===== SYNC ENGINE =====
+const { setupSocketSync } = setupSyncEngine(app, db, io, connectedScreens, screenModes);
 
 // ===== API ROUTES =====
 
@@ -273,7 +282,13 @@ app.get('/api/screens/:id', (req, res) => {
   if (!screen) return res.status(404).json({ error: 'Screen not found' });
   res.json({ 
     success: true, 
-    data: { ...screen, config: JSON.parse(screen.config || '{}'), connected: connectedScreens.has(screen.id) }
+    data: {
+      ...screen,
+      config: JSON.parse(screen.config || '{}'),
+      capabilities: JSON.parse(screen.capabilities || '{}'),
+      connected: connectedScreens.has(screen.id),
+      currentMode: screenModes.get(screen.id) || 'signage',
+    }
   });
 });
 
@@ -951,6 +966,9 @@ setInterval(async () => {
 io.on('connection', (socket) => {
   console.log(`🔌 Socket connected: ${socket.id}`);
   
+  // Wire up sync engine events for this socket
+  setupSocketSync(socket);
+  
   // Screen registration
   socket.on('register', (data) => {
     const { screenId, name, type, group } = data;
@@ -1121,8 +1139,12 @@ server.listen(PORT, () => {
 ║  Server:  http://localhost:${PORT}               ║
 ║  Admin:   http://localhost:${PORT}/admin          ║
 ║  API:     http://localhost:${PORT}/api            ║
+║  Context: http://localhost:${PORT}/api/context    ║
 ╚═══════════════════════════════════════════════╝
   `);
+  
+  // Start Context Engine after server is listening
+  contextEngine.start();
   
   // Auto-reload disabled - was causing constant screen resets
   // Use POST /api/reload-all to manually trigger if needed after deploys

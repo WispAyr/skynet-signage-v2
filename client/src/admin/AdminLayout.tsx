@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { io, Socket } from 'socket.io-client'
 import { 
   Monitor, LayoutDashboard, MapPin, List, Film, Calendar, Settings, 
-  Wifi, WifiOff, RefreshCw, ChevronLeft, ChevronRight, Shield
+  Wifi, WifiOff, RefreshCw, ChevronLeft, ChevronRight, Shield, Link2
 } from 'lucide-react'
 import { DashboardPage } from './DashboardPage'
 import { ScreensPage } from './ScreensPage'
@@ -10,9 +10,10 @@ import { PlaylistsPage } from './PlaylistsPage'
 import { ContentPage } from './ContentPage'
 import { LocationsPage } from './LocationsPage'
 import { SchedulesPage } from './SchedulesPage'
+import { SyncGroupsPage } from './SyncGroupsPage'
 import { SettingsPage } from './SettingsPage'
 
-type Page = 'dashboard' | 'screens' | 'playlists' | 'content' | 'locations' | 'schedules' | 'settings'
+type Page = 'dashboard' | 'screens' | 'playlists' | 'content' | 'locations' | 'sync' | 'schedules' | 'settings'
 
 const NAV_ITEMS: { id: Page; label: string; icon: any; color: string }[] = [
   { id: 'dashboard', label: 'DASHBOARD', icon: LayoutDashboard, color: 'text-accent' },
@@ -20,7 +21,8 @@ const NAV_ITEMS: { id: Page; label: string; icon: any; color: string }[] = [
   { id: 'playlists', label: 'PLAYLISTS', icon: List, color: 'text-lcars-amber' },
   { id: 'content', label: 'CONTENT', icon: Film, color: 'text-lcars-purple' },
   { id: 'locations', label: 'LOCATIONS', icon: MapPin, color: 'text-lcars-teal' },
-  { id: 'schedules', label: 'SCHEDULES', icon: Calendar, color: 'text-lcars-pink' },
+  { id: 'sync', label: 'SYNC GROUPS', icon: Link2, color: 'text-lcars-pink' },
+  { id: 'schedules', label: 'SCHEDULES', icon: Calendar, color: 'text-gray-400' },
   { id: 'settings', label: 'SETTINGS', icon: Settings, color: 'text-gray-400' },
 ]
 
@@ -179,6 +181,7 @@ export function AdminLayout() {
           {page === 'playlists' && <PlaylistsPage screens={screens} />}
           {page === 'content' && <ContentPage />}
           {page === 'locations' && <LocationsPage screens={screens} onRefresh={fetchScreens} />}
+          {page === 'sync' && <SyncGroupsPage screens={screens} onRefresh={fetchScreens} />}
           {page === 'schedules' && <SchedulesPage />}
           {page === 'settings' && <SettingsPage />}
         </div>
