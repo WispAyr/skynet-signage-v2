@@ -627,7 +627,10 @@ const VALID_TEMPLATES = [
   'welcome-display',
   'parking-rates',
   'multi-zone',
-  'announcement-rotator'
+  'announcement-rotator',
+  'site-info',
+  'announcement-board',
+  'schedule-display'
 ];
 
 // Display template - main entry point for template-based content
@@ -709,6 +712,18 @@ app.get('/api/templates', (req, res) => {
       'announcement-rotator': {
         description: 'Rotating announcements with transitions',
         fields: ['title?', 'announcements[]{title,message,icon?,color?,priority?,footer?}', 'rotateInterval?', 'brandColor?']
+      },
+      'site-info': {
+        description: 'All-in-one site info board: capacity, features, rules, contact, live occupancy',
+        fields: ['siteName', 'locationId?', 'subtitle?', 'capacity?', 'features?[]', 'rules?[]', 'contact?', 'operatingHours?', 'showOccupancy?', 'posSiteId?']
+      },
+      'announcement-board': {
+        description: 'Auto-refreshing notice board pulling from /api/announcements (admin-editable)',
+        fields: ['title?', 'locationId?', 'maxItems?', 'rotatePages?', 'rotateInterval?', 'refreshInterval?', 'layout?', 'showTimestamps?']
+      },
+      'schedule-display': {
+        description: 'Rate schedule display: peak/off-peak periods, current status, upcoming events',
+        fields: ['siteName', 'periods[]{name,startTime,endTime,days?,rates[],color?}', 'specialEvents?[]', 'showOccupancy?', 'posSiteId?']
       }
     }
   });

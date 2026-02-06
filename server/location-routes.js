@@ -352,5 +352,165 @@ export function setupLocationRoutes(app, db, io, connectedScreens) {
     }
   });
 
-  console.log('📍 Location routes initialized');
+  // ===== ANNOUNCEMENTS CRUD =====
+  
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL,
+      icon TEXT DEFAULT '',
+      priority TEXT DEFAULT 'normal',
+      location_id TEXT,
+      starts_at INTEGER,
+      expires_at INTEGER,
+      active INTEGER DEFAULT 1,
+      created_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+      updated_at INTEGER DEFAULT (strftime('%s', 'now') * 1000),
+      FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE SET NULL
+    );
+  `);
+
+  // List announcements (with optional location filter)
+  app.get('/api/announcements', (req, res) => {
+    try {
+      const { location_id, active_only } = req.query;
+      let query = 'SELECT a.*, l.name as location_name FROM announcements a LEFT JOIN locations l ON a.location_id = l.id';
+      const conditions = [];
+      const params = [];
+      
+      if (location_id) { conditions.push('(a.location_id = ? OR a.location_id IS NULL)'); params.push(location_id); }
+      if (active_only === 'true') {
+        conditions.push('a.active = 1');
+        conditions.push('(a.starts_at IS NULL OR a.starts_at <= ?)');
+        conditions.push('(a.expires_at IS NULL OR a.expires_at >= ?)');
+        const now = Date.now();
+        params.push(now, now);
+      }
+      
+      if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+      query += ' ORDER BY CASE a.priority WHEN \'urgent\' THEN 0 WHEN \'high\' THEN 1 ELSE 2 END, a.created_at DESC';
+      
+      const rows = db.prepare(query).all(...params);
+      res.json({ success: true, data: rows });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Create announcement
+  app.post('/api/announcements', (req, res) => {
+    try {
+      const { title, message, icon, priority, location_id, starts_at, expires_at } = req.body;
+      if (!title || !message) return res.status(400).json({ success: false, error: 'title and message required' });
+      
+      const id = `ann-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+      
+      db.prepare(`
+        INSERT INTO announcements (id, title, message, icon, priority, location_id, starts_at, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, title, message, icon || '', priority || 'normal', location_id || null, starts_at || null, expires_at || null);
+      
+      const row = db.prepare('SELECT * FROM announcements WHERE id = ?').get(id);
+      console.log(`📢 Announcement created: ${title}`);
+      res.json({ success: true, data: row });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Update announcement
+  app.put('/api/announcements/:id', (req, res) => {
+    try {
+      const existing = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
+      if (!existing) return res.status(404).json({ success: false, error: 'Not found' });
+      
+      const { title, message, icon, priority, location_id, starts_at, expires_at, active } = req.body;
+      
+      db.prepare(`
+        UPDATE announcements SET
+          title = COALESCE(?, title),
+          message = COALESCE(?, message),
+          icon = COALESCE(?, icon),
+          priority = COALESCE(?, priority),
+          location_id = COALESCE(?, location_id),
+          starts_at = COALESCE(?, starts_at),
+          expires_at = COALESCE(?, expires_at),
+          active = COALESCE(?, active),
+          updated_at = ?
+        WHERE id = ?
+      `).run(
+        title || null, message || null, icon !== undefined ? icon : null, priority || null,
+        location_id !== undefined ? location_id : null,
+        starts_at !== undefined ? starts_at : null,
+        expires_at !== undefined ? expires_at : null,
+        active !== undefined ? (active ? 1 : 0) : null,
+        Date.now(), req.params.id
+      );
+      
+      const row = db.prepare('SELECT * FROM announcements WHERE id = ?').get(req.params.id);
+      res.json({ success: true, data: row });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Delete announcement
+  app.delete('/api/announcements/:id', (req, res) => {
+    try {
+      db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // ===== SITE CONFIG (for per-location display data) =====
+  // Store configurable site information (rates, rules, contact) in location config
+  
+  app.get('/api/locations/:id/display-config', (req, res) => {
+    try {
+      const location = db.prepare('SELECT * FROM locations WHERE id = ?').get(req.params.id);
+      if (!location) return res.status(404).json({ success: false, error: 'Location not found' });
+      
+      const config = JSON.parse(location.config || '{}');
+      // Include live data
+      const screenCount = db.prepare('SELECT COUNT(*) as count FROM screens WHERE location_id = ?').get(req.params.id).count;
+      const onlineCount = Array.from(connectedScreens.keys()).filter(id => {
+        const screen = db.prepare('SELECT location_id FROM screens WHERE id = ?').get(id);
+        return screen && screen.location_id === req.params.id;
+      }).length;
+      
+      res.json({
+        success: true,
+        data: {
+          ...location,
+          config,
+          screens: { total: screenCount, online: onlineCount },
+        }
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.put('/api/locations/:id/display-config', (req, res) => {
+    try {
+      const existing = db.prepare('SELECT * FROM locations WHERE id = ?').get(req.params.id);
+      if (!existing) return res.status(404).json({ success: false, error: 'Location not found' });
+      
+      const currentConfig = JSON.parse(existing.config || '{}');
+      const mergedConfig = { ...currentConfig, ...req.body };
+      
+      db.prepare('UPDATE locations SET config = ? WHERE id = ?')
+        .run(JSON.stringify(mergedConfig), req.params.id);
+      
+      console.log(`📍 Display config updated for ${existing.name}`);
+      res.json({ success: true, data: mergedConfig });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  console.log('📍 Location + announcement routes initialized');
 }

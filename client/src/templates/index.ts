@@ -11,6 +11,9 @@ export { WelcomeDisplayTemplate } from './WelcomeDisplayTemplate'
 export { ParkingRatesTemplate } from './ParkingRatesTemplate'
 export { MultiZoneTemplate } from './MultiZoneTemplate'
 export { AnnouncementRotatorTemplate } from './AnnouncementRotatorTemplate'
+export { SiteInfoTemplate } from './SiteInfoTemplate'
+export { AnnouncementBoardTemplate } from './AnnouncementBoardTemplate'
+export { ScheduleDisplayTemplate } from './ScheduleDisplayTemplate'
 
 // Template registry for dynamic loading
 export const templates = {
@@ -23,6 +26,9 @@ export const templates = {
   'parking-rates': () => import('./ParkingRatesTemplate').then(m => m.ParkingRatesTemplate),
   'multi-zone': () => import('./MultiZoneTemplate').then(m => m.MultiZoneTemplate),
   'announcement-rotator': () => import('./AnnouncementRotatorTemplate').then(m => m.AnnouncementRotatorTemplate),
+  'site-info': () => import('./SiteInfoTemplate').then(m => m.SiteInfoTemplate),
+  'announcement-board': () => import('./AnnouncementBoardTemplate').then(m => m.AnnouncementBoardTemplate),
+  'schedule-display': () => import('./ScheduleDisplayTemplate').then(m => m.ScheduleDisplayTemplate),
 } as const
 
 export type TemplateName = keyof typeof templates
@@ -153,6 +159,56 @@ export interface AnnouncementRotatorData {
   transition?: 'fade' | 'slide'
 }
 
+export interface SiteInfoData {
+  locationId?: string
+  siteName: string
+  subtitle?: string
+  capacity?: number
+  features?: string[]
+  rules?: string[]
+  contact?: { phone?: string; email?: string; website?: string }
+  operatingHours?: { open: string; close: string }
+  showOccupancy?: boolean
+  posApiUrl?: string
+  posSiteId?: string
+  brandColor?: string
+  refreshInterval?: number
+}
+
+export interface AnnouncementBoardData {
+  title?: string
+  locationId?: string
+  maxItems?: number
+  rotatePages?: boolean
+  rotateInterval?: number
+  refreshInterval?: number
+  showTimestamps?: boolean
+  brandColor?: string
+  showClock?: boolean
+  layout?: 'list' | 'cards'
+}
+
+export interface ScheduleDisplayData {
+  siteName: string
+  locationId?: string
+  periods: Array<{
+    name: string
+    startTime: string
+    endTime: string
+    days?: number[]
+    rates: Array<{ label: string; price: string }>
+    color?: string
+    active?: boolean
+  }>
+  specialEvents?: Array<{ name: string; date: string; note: string; color?: string }>
+  brandColor?: string
+  showClock?: boolean
+  showOccupancy?: boolean
+  posApiUrl?: string
+  posSiteId?: string
+  refreshInterval?: number
+}
+
 export type TemplateData = 
   | { template: 'task-complete', data: TaskCompleteData }
   | { template: 'alert', data: AlertData }
@@ -163,3 +219,6 @@ export type TemplateData =
   | { template: 'parking-rates', data: ParkingRatesData }
   | { template: 'multi-zone', data: MultiZoneData }
   | { template: 'announcement-rotator', data: AnnouncementRotatorData }
+  | { template: 'site-info', data: SiteInfoData }
+  | { template: 'announcement-board', data: AnnouncementBoardData }
+  | { template: 'schedule-display', data: ScheduleDisplayData }
