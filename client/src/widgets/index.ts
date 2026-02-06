@@ -16,6 +16,7 @@ export { YoungsMenuWidget } from './YoungsMenuWidget'
 export { TemplateWidget } from './TemplateWidget'
 export { SecurityAlertWidget } from './SecurityAlertWidget'
 export { RevenueWidget } from './RevenueWidget'
+export { MascotWidget } from './MascotWidget'
 
 // Re-export templates
 export * from '../templates'

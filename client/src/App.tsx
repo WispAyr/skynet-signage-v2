@@ -20,6 +20,7 @@ import { YoungsKioskWidget } from './widgets/YoungsKioskWidget'
 import { TemplateWidget } from './widgets/TemplateWidget'
 import { SecurityAlertWidget } from './widgets/SecurityAlertWidget'
 import { RevenueWidget } from './widgets/RevenueWidget'
+import { MascotWidget } from './widgets/MascotWidget'
 import { PlaylistPlayer, Playlist } from './widgets/PlaylistPlayer'
 import { AdminLayout } from './admin/AdminLayout'
 import { useContextMood } from './hooks/useContextMood'
@@ -114,6 +115,10 @@ function WidgetRenderer({ widget, config }: { widget: string; config: any }) {
     case 'revenue':
     case 'pos-revenue':
       return <RevenueWidget config={config} />
+    case 'mascot':
+    case 'buddy':
+    case 'character':
+      return <MascotWidget config={config} />
     default:
       return (
         <div className="flex items-center justify-center h-full text-gray-500">
