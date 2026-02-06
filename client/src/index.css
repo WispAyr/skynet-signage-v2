@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Antonio:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,11 +9,12 @@
   --bg-tertiary: #151820;
   --text: #e8eaed;
   --text-muted: #6b7280;
-  --accent: #00d4ff;
-  --accent-dim: #0099bb;
+  --accent: #F97316;
+  --accent-dim: #EA580C;
+  --accent-light: #FB923C;
   --border: #1f2937;
   --success: #10b981;
-  --warning: #f59e0b;
+  --warning: #FBBF24;
   --error: #ef4444;
 }
 
@@ -20,6 +22,7 @@ body {
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
+  font-family: 'Antonio', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 /* Subtle grid background */
@@ -28,8 +31,8 @@ body::before {
   position: fixed;
   inset: 0;
   background-image: 
-    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(249, 115, 22, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(249, 115, 22, 0.02) 1px, transparent 1px);
   background-size: 50px 50px;
   pointer-events: none;
   z-index: 0;
@@ -66,3 +69,27 @@ body::before {
 .animate-fadeIn { animation: fadeIn 0.3s ease; }
 .animate-slideUp { animation: slideUp 0.3s ease; }
 .animate-pulse { animation: pulse 2s infinite; }
+
+/* LCARS-style decorations */
+.lcars-bar {
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 100%);
+  border-radius: 0 20px 20px 0;
+}
+
+.lcars-elbow {
+  border-radius: 0 0 0 40px;
+  border-left: 4px solid var(--accent);
+  border-bottom: 4px solid var(--accent);
+}
+
+/* Glass morphism for cards */
+.glass {
+  background: rgba(13, 15, 18, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(249, 115, 22, 0.1);
+}
+
+.glass-hover:hover {
+  border-color: rgba(249, 115, 22, 0.3);
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.05);
+}

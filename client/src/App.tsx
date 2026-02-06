@@ -18,9 +18,10 @@ import { SportsWidget } from './widgets/SportsWidget'
 import { YoungsMenuWidget } from './widgets/YoungsMenuWidget'
 import { YoungsKioskWidget } from './widgets/YoungsKioskWidget'
 import { TemplateWidget } from './widgets/TemplateWidget'
+import { SecurityAlertWidget } from './widgets/SecurityAlertWidget'
+import { RevenueWidget } from './widgets/RevenueWidget'
 import { PlaylistPlayer, Playlist } from './widgets/PlaylistPlayer'
-import { PlaylistManager } from './components/PlaylistManager'
-import { RemotionManager } from './components/RemotionManager'
+import { AdminLayout } from './admin/AdminLayout'
 
 // Determine mode from URL params
 const params = new URLSearchParams(window.location.search)
@@ -106,6 +107,11 @@ function WidgetRenderer({ widget, config }: { widget: string; config: any }) {
       return <YoungsKioskWidget config={config} />
     case 'template':
       return <TemplateWidget config={config} />
+    case 'security-alert':
+      return <SecurityAlertWidget config={config} />
+    case 'revenue':
+    case 'pos-revenue':
+      return <RevenueWidget config={config} />
     default:
       return (
         <div className="flex items-center justify-center h-full text-gray-500">
@@ -239,7 +245,9 @@ function DisplayMode() {
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000
+      reconnectionDelayMax: 30000,
+      randomizationFactor: 0.5,
+      timeout: 20000,
     })
     socketRef.current = s
     
@@ -1174,5 +1182,5 @@ function TemplateButton({ icon, label, sub, color, onClick }: {
 
 // ===== MAIN APP =====
 export default function App() {
-  return isDisplayMode ? <DisplayMode /> : <AdminMode />
+  return isDisplayMode ? <DisplayMode /> : <AdminLayout />
 }

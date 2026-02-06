@@ -9,6 +9,7 @@ import { dirname, join } from 'path';
 import fs from 'fs';
 import * as remotion from './remotion-integration.js';
 import { setupPlaylistRoutes } from './playlist-routes.js';
+import { setupLocationRoutes } from './location-routes.js';
 import { PRESETS, getPreset, listPresets, getCategories } from './presets.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -53,6 +54,7 @@ db.exec(`
     group_id TEXT DEFAULT 'default',
     type TEXT DEFAULT 'browser',
     location TEXT,
+    location_id TEXT,
     config TEXT DEFAULT '{}',
     last_seen INTEGER,
     status TEXT DEFAULT 'offline',
@@ -165,6 +167,9 @@ const lastPushedContent = new Map(); // screenId -> last ContentPayload
 // ===== PLAYLIST ROUTES =====
 setupPlaylistRoutes(app, db, io, connectedScreens);
 
+// ===== LOCATION & SETTINGS ROUTES =====
+setupLocationRoutes(app, db, io, connectedScreens);
+
 // ===== API ROUTES =====
 
 // RSS Proxy for sports widgets (CORS workaround)
@@ -227,7 +232,32 @@ app.get('/api/health', (req, res) => {
 
 // List all screens
 app.get('/api/screens', (req, res) => {
-  const screens = db.prepare('SELECT * FROM screens ORDER BY name').all();
+  const { location_id, status } = req.query;
+  let query = 'SELECT s.*, l.name as location_name FROM screens s LEFT JOIN locations l ON s.location_id = l.id';
+  const conditions = [];
+  const params = [];
+  
+  if (location_id) { conditions.push('s.location_id = ?'); params.push(location_id); }
+  if (status === 'online') { 
+    const onlineIds = Array.from(connectedScreens.keys());
+    if (onlineIds.length) {
+      conditions.push(`s.id IN (${onlineIds.map(() => '?').join(',')})`);
+      params.push(...onlineIds);
+    } else {
+      conditions.push('1=0');
+    }
+  } else if (status === 'offline') {
+    const onlineIds = Array.from(connectedScreens.keys());
+    if (onlineIds.length) {
+      conditions.push(`s.id NOT IN (${onlineIds.map(() => '?').join(',')})`);
+      params.push(...onlineIds);
+    }
+  }
+  
+  if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
+  query += ' ORDER BY s.name';
+  
+  const screens = db.prepare(query).all(...params);
   const enriched = screens.map(s => ({
     ...s,
     config: { ...DEFAULT_SCREEN_CONFIG, ...JSON.parse(s.config || '{}') },
@@ -249,22 +279,46 @@ app.get('/api/screens/:id', (req, res) => {
 
 // Register/update screen
 app.post('/api/screens', (req, res) => {
-  const { id, name, group_id, type, location, config } = req.body;
+  const { id, name, group_id, type, location, location_id, config } = req.body;
   const screenId = id || `screen-${uuidv4().slice(0, 8)}`;
   
   db.prepare(`
-    INSERT INTO screens (id, name, group_id, type, location, config, last_seen, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'registered')
+    INSERT INTO screens (id, name, group_id, type, location, location_id, config, last_seen, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'registered')
     ON CONFLICT(id) DO UPDATE SET
       name = COALESCE(excluded.name, name),
       group_id = COALESCE(excluded.group_id, group_id),
       type = COALESCE(excluded.type, type),
       location = COALESCE(excluded.location, location),
+      location_id = COALESCE(excluded.location_id, location_id),
       config = COALESCE(excluded.config, config)
-  `).run(screenId, name || screenId, group_id || 'default', type || 'browser', location, JSON.stringify(config || {}));
+  `).run(screenId, name || screenId, group_id || 'default', type || 'browser', location, location_id || null, JSON.stringify(config || {}), Date.now());
   
   const screen = db.prepare('SELECT * FROM screens WHERE id = ?').get(screenId);
+  io.emit('screens:update', { screenId, status: 'registered' });
   res.json({ success: true, data: { ...screen, config: JSON.parse(screen.config || '{}') } });
+});
+
+// Update screen details (name, location, group)
+app.put('/api/screens/:id', (req, res) => {
+  const screen = db.prepare('SELECT * FROM screens WHERE id = ?').get(req.params.id);
+  if (!screen) return res.status(404).json({ error: 'Screen not found' });
+  
+  const { name, group_id, location_id, location, type } = req.body;
+  db.prepare(`
+    UPDATE screens SET
+      name = COALESCE(?, name),
+      group_id = COALESCE(?, group_id),
+      location_id = COALESCE(?, location_id),
+      location = COALESCE(?, location),
+      type = COALESCE(?, type)
+    WHERE id = ?
+  `).run(name || null, group_id || null, location_id !== undefined ? location_id : null, 
+         location || null, type || null, req.params.id);
+  
+  const updated = db.prepare('SELECT * FROM screens WHERE id = ?').get(req.params.id);
+  io.emit('screens:update', { screenId: req.params.id });
+  res.json({ success: true, data: { ...updated, config: JSON.parse(updated.config || '{}'), connected: connectedScreens.has(req.params.id) } });
 });
 
 // Delete screen
@@ -879,6 +933,11 @@ io.on('connection', (socket) => {
     socket.screenId = screenId;
     screenModes.set(screenId, 'signage'); // Default to signage on connect
     
+    // Track connection event
+    if (app.locals.recordConnectionEvent) {
+      app.locals.recordConnectionEvent(screenId, 'connected', { name: name || screenId, type: type || 'browser' });
+    }
+    
     console.log(`📺 Screen registered: ${screenId} (${name || 'unnamed'})`);
     
     // Send current config to screen (legacy)
@@ -932,6 +991,12 @@ io.on('connection', (socket) => {
       connectedScreens.delete(socket.screenId);
       screenModes.delete(socket.screenId);
       db.prepare('UPDATE screens SET status = ? WHERE id = ?').run('offline', socket.screenId);
+      
+      // Track disconnection
+      if (app.locals.recordConnectionEvent) {
+        app.locals.recordConnectionEvent(socket.screenId, 'disconnected', {});
+      }
+      
       console.log(`📺 Screen disconnected: ${socket.screenId}`);
       io.emit('screens:update', { screenId: socket.screenId, status: 'offline' });
     }

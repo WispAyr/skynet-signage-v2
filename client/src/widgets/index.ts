@@ -14,6 +14,8 @@ export { TeamActivityWidget } from './TeamActivityWidget'
 export { TestCardWidget } from './TestCardWidget'
 export { YoungsMenuWidget } from './YoungsMenuWidget'
 export { TemplateWidget } from './TemplateWidget'
+export { SecurityAlertWidget } from './SecurityAlertWidget'
+export { RevenueWidget } from './RevenueWidget'
 
 // Re-export templates
 export * from '../templates'
