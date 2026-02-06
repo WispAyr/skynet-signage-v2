@@ -559,6 +559,77 @@ app.post('/api/push/clear', (req, res) => {
   res.json({ success: true, pushed });
 });
 
+// ===== CONTENT LIBRARY API =====
+
+app.get('/api/content/widgets', (req, res) => {
+  res.json({ success: true, data: [
+    { id: 'clock', name: 'Clock', description: 'Digital/analog clock display', icon: 'clock', defaultConfig: {} },
+    { id: 'weather', name: 'Weather', description: 'Current weather conditions', icon: 'cloud', defaultConfig: { location: 'Ayr' } },
+    { id: 'camera', name: 'Camera Feed', description: 'Live camera stream', icon: 'camera', defaultConfig: { cameraId: 'kyle-rise-rear' } },
+    { id: 'camera-grid', name: 'Camera Grid', description: 'Multi-camera grid view', icon: 'grid', defaultConfig: {} },
+    { id: 'occupancy', name: 'Parking Occupancy', description: 'Live car park occupancy', icon: 'parking', defaultConfig: {} },
+    { id: 'stats', name: 'Stats Display', description: 'Key metrics and statistics', icon: 'bar-chart', defaultConfig: {} },
+    { id: 'operations-dashboard', name: 'Operations Dashboard', description: 'System overview for NOC', icon: 'activity', defaultConfig: {} },
+    { id: 'team-activity', name: 'Team Activity', description: 'Team/agent activity feed', icon: 'users', defaultConfig: {} },
+    { id: 'security-alert', name: 'Security Alert', description: 'SentryFlow security alerts', icon: 'shield', defaultConfig: { apiUrl: 'http://localhost:3890' } },
+    { id: 'revenue', name: 'POS Revenue', description: 'Live parking revenue', icon: 'bar-chart', defaultConfig: {} },
+    { id: 'mascot', name: 'Parker (Mascot)', description: 'Mood-reactive animated character', icon: 'bot', defaultConfig: { size: 'large', showSpeechBubble: true, characterName: 'PARKER' } },
+    { id: 'sports', name: 'Sports Scores', description: 'Live football scores', icon: 'activity', defaultConfig: { team: 'rangers' } },
+  ]});
+});
+
+app.get('/api/content/templates', (req, res) => {
+  res.json({ success: true, data: [
+    { id: 'welcome-display', name: 'Welcome Display', type: 'react-template', category: 'entrance', description: 'Entrance screen with greeting, clock, weather, rotating slides' },
+    { id: 'parking-rates', name: 'Parking Rates', type: 'react-template', category: 'information', description: 'Dynamic tariff board with rates and payment methods' },
+    { id: 'site-info', name: 'Site Information', type: 'react-template', category: 'information', description: 'Site details, features, capacity, contact info' },
+    { id: 'announcement-board', name: 'Announcement Board', type: 'react-template', category: 'notices', description: 'Rotating notices with priority levels' },
+    { id: 'announcement-rotator', name: 'Announcement Rotator', type: 'react-template', category: 'notices', description: 'Auto-rotating single announcements' },
+    { id: 'schedule-display', name: 'Schedule Display', type: 'react-template', category: 'information', description: 'Time-based schedule with peak/off-peak rates' },
+    { id: 'multi-zone', name: 'Multi-Zone Layout', type: 'react-template', category: 'layout', description: 'Split layout: main + sidebar + ticker' },
+    { id: 'metrics', name: 'Metrics Dashboard', type: 'react-template', category: 'data', description: 'Live metrics and KPI display' },
+    { id: 'alert', name: 'Alert Display', type: 'react-template', category: 'emergency', description: 'Emergency/alert full-screen overlay' },
+    { id: 'daily-digest', name: 'Daily Digest', type: 'react-template', category: 'summary', description: 'Daily operations summary' },
+  ]});
+});
+
+app.get('/api/content/videos', async (req, res) => {
+  const { readdirSync, statSync } = await import('fs');
+  const { join, basename, extname } = await import('path');
+  const videoBase = '/Volumes/Parkwise/Skynet/video';
+  const videos = [];
+  
+  try {
+    const scanDir = (dir, category) => {
+      try {
+        const entries = readdirSync(dir);
+        for (const entry of entries) {
+          const full = join(dir, entry);
+          try {
+            const stat = statSync(full);
+            if (stat.isDirectory()) {
+              scanDir(full, entry);
+            } else if (['.mp4', '.webm', '.mov', '.avi'].includes(extname(entry).toLowerCase())) {
+              videos.push({
+                id: Buffer.from(full).toString('base64url').slice(0, 12),
+                filename: entry,
+                path: category ? `${category}/${entry}` : entry,
+                category: category || 'uncategorised',
+                size: stat.size,
+                modified: stat.mtimeMs,
+              });
+            }
+          } catch {}
+        }
+      } catch {}
+    };
+    scanDir(videoBase, '');
+    res.json({ success: true, data: videos });
+  } catch (err) {
+    res.json({ success: true, data: [] });
+  }
+});
+
 // ===== PRESET LAYOUTS API =====
 // Pre-configured control room layouts combining dashboard + cameras
 

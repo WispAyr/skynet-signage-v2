@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Film, Layout, Zap, Camera, Clock, Cloud, BarChart3, ParkingCircle, Activity, Users, AlertTriangle, Play, ExternalLink, Folder, FileVideo } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Film, Layout, Zap, Camera, Clock, Cloud, BarChart3, ParkingCircle, Activity, Users, AlertTriangle, Play, ExternalLink, Folder, FileVideo, Eye, X, Volume2, VolumeX, ChevronDown, Bot } from 'lucide-react'
 
 interface Widget {
   id: string
@@ -36,6 +36,54 @@ const WIDGET_ICONS: Record<string, any> = {
   'bar-chart': BarChart3,
   activity: Activity,
   users: Users,
+  shield: AlertTriangle,
+  bot: Bot,
+}
+
+// Template preview thumbnails (mini screenshots / emoji representations)
+const TEMPLATE_PREVIEWS: Record<string, { emoji: string; gradient: string; preview?: string }> = {
+  'welcome-display': { emoji: '👋', gradient: 'from-orange-900/40 to-dark-900', preview: 'Welcome screen with clock, weather, rotating slides' },
+  'parking-rates': { emoji: '🅿️', gradient: 'from-blue-900/40 to-dark-900', preview: 'Tariff board with rates and payment methods' },
+  'site-info': { emoji: '🏢', gradient: 'from-green-900/40 to-dark-900', preview: 'Site details, features, capacity' },
+  'announcement-board': { emoji: '📢', gradient: 'from-amber-900/40 to-dark-900', preview: 'Rotating notices with priority levels' },
+  'announcement-rotator': { emoji: '🔄', gradient: 'from-purple-900/40 to-dark-900', preview: 'Auto-rotating announcements' },
+  'multi-zone': { emoji: '📐', gradient: 'from-cyan-900/40 to-dark-900', preview: 'Split layout: main + sidebar + ticker' },
+  'schedule-display': { emoji: '📅', gradient: 'from-indigo-900/40 to-dark-900', preview: 'Time-based schedule with peak/off-peak' },
+  'alert': { emoji: '🚨', gradient: 'from-red-900/40 to-dark-900', preview: 'Emergency/alert overlay' },
+  'metrics': { emoji: '📊', gradient: 'from-teal-900/40 to-dark-900', preview: 'Live metrics dashboard' },
+  'announcement': { emoji: '📣', gradient: 'from-yellow-900/40 to-dark-900', preview: 'Single announcement display' },
+  'daily-digest': { emoji: '📰', gradient: 'from-slate-900/40 to-dark-900', preview: 'Daily summary digest' },
+  'task-complete': { emoji: '✅', gradient: 'from-emerald-900/40 to-dark-900', preview: 'Task completion notification' },
+}
+
+// Demo data for template previews
+const TEMPLATE_DEMO_DATA: Record<string, any> = {
+  'welcome-display': {
+    siteName: 'KYLE RISE', subtitle: 'Welcome to Parkwise', weatherLocation: 'Ayr',
+    showClock: true, showWeather: true, brandColor: '#FF9900',
+    notices: ['🅿️ 24/7 Parking', '💳 Contactless', '♿ Accessible'],
+    slides: [{ icon: '🅿️', title: 'Welcome', message: 'KYLE RISE CAR PARK' }],
+  },
+  'parking-rates': {
+    siteName: 'Kyle Rise Car Park', currency: '£', brandColor: '#FF9900',
+    rates: [
+      { duration: 'Up to 1 hour', price: 1.50 }, { duration: 'Up to 2 hours', price: 2.50 },
+      { duration: 'Up to 4 hours', price: 4.00 }, { duration: 'All day', price: 8.00 },
+    ],
+    paymentMethods: ['Cash', 'Card', 'Contactless', 'RingGo'], operatingHours: '24/7',
+  },
+  'site-info': {
+    siteName: 'Kyle Rise Car Park', address: 'Kyle Street, Ayr KA7 1RZ', operator: 'Parkwise',
+    capacity: 120, type: 'Multi-Storey', brandColor: '#FF9900',
+    features: ['CCTV', '24/7 Access', 'EV Charging', 'Disabled Bays', 'Contactless Payment'],
+  },
+  'announcement-board': {
+    title: 'PARKWISE NOTICES', brandColor: '#FF9900',
+    announcements: [
+      { title: 'Level 3 Maintenance', message: 'Closed for cleaning Saturday 6am-10am', priority: 'warning' },
+      { title: 'New EV Chargers', message: 'Fast chargers on Level 1', priority: 'info' },
+    ],
+  },
 }
 
 export function ContentPage() {
@@ -44,11 +92,20 @@ export function ContentPage() {
   const [videos, setVideos] = useState<VideoFile[]>([])
   const [tab, setTab] = useState<'widgets' | 'templates' | 'videos'>('widgets')
   const [pushTarget, setPushTarget] = useState('all')
+  const [screens, setScreens] = useState<{ id: string; name: string }[]>([])
+  const [previewModal, setPreviewModal] = useState<{ type: 'template' | 'video'; id: string; url?: string } | null>(null)
+  const [videoPreview, setVideoPreview] = useState<string | null>(null)
+  const [videoMuted, setVideoMuted] = useState(true)
+  const videoRef = useRef<HTMLVideoElement>(null)
 
   useEffect(() => {
-    fetch('/api/content/widgets').then(r => r.json()).then(d => { if (d.success) setWidgets(d.data) })
-    fetch('/api/content/templates').then(r => r.json()).then(d => { if (d.success) setTemplates(d.data) })
+    fetch('/api/content/widgets').then(r => r.json()).then(d => { if (d.success) setWidgets(d.data) }).catch(() => {})
+    fetch('/api/content/templates').then(r => r.json()).then(d => { if (d.success) setTemplates(d.data) }).catch(() => {})
     fetch('/api/content/videos').then(r => r.json()).then(d => { if (d.success) setVideos(d.data) }).catch(() => {})
+    fetch('/api/screens').then(r => r.json()).then(d => {
+      const s = d.data || d
+      if (Array.isArray(s)) setScreens(s.map((x: any) => ({ id: x.id, name: x.name })))
+    }).catch(() => {})
   }, [])
 
   const pushWidget = async (widget: string, config: any) => {
@@ -59,19 +116,12 @@ export function ContentPage() {
     })
   }
 
-  const pushUrl = async (url: string) => {
-    await fetch('/api/push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: pushTarget, type: 'url', content: { url } })
-    })
-  }
-
-  const pushReactTemplate = async (templateId: string, defaultData: any) => {
+  const pushReactTemplate = async (templateId: string, data?: any) => {
+    const demoData = data || TEMPLATE_DEMO_DATA[templateId] || {}
     await fetch('/api/display', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target: pushTarget, template: templateId, data: defaultData })
+      body: JSON.stringify({ target: pushTarget, template: templateId, data: demoData })
     })
   }
 
@@ -80,6 +130,14 @@ export function ContentPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ target: pushTarget, type: 'media', content: { url: `/video/${filename}`, type: 'video', loop: true } })
+    })
+  }
+
+  const pushUrl = async (url: string) => {
+    await fetch('/api/push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: pushTarget, type: 'url', content: { url } })
     })
   }
 
@@ -103,9 +161,7 @@ export function ContentPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-1 bg-dark-800 rounded-lg p-1">
           {(['widgets', 'templates', 'videos'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
+            <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-md text-sm font-medium tracking-wider transition ${
                 tab === t ? 'bg-accent text-dark-900' : 'text-gray-400 hover:text-white'
               }`}
@@ -116,18 +172,15 @@ export function ContentPage() {
         </div>
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-500">Push to:</span>
-          <select
-            value={pushTarget}
-            onChange={e => setPushTarget(e.target.value)}
-            className="bg-dark-700 border border-dark-600 rounded-lg px-3 py-1.5 text-sm"
-          >
+          <select value={pushTarget} onChange={e => setPushTarget(e.target.value)}
+            className="bg-dark-700 border border-dark-600 rounded-lg px-3 py-1.5 text-sm">
             <option value="all">All Screens</option>
-            <option value="office">Office Group</option>
+            {screens.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
       </div>
 
-      {/* Widgets tab */}
+      {/* ===== WIDGETS TAB ===== */}
       {tab === 'widgets' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {widgets.map(widget => {
@@ -138,11 +191,9 @@ export function ContentPage() {
                   <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
                     <Icon className="w-5 h-5 text-accent" />
                   </div>
-                  <button
-                    onClick={() => pushWidget(widget.id, widget.defaultConfig)}
+                  <button onClick={() => pushWidget(widget.id, widget.defaultConfig)}
                     className="opacity-0 group-hover:opacity-100 p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition"
-                    title="Push to screens"
-                  >
+                    title="Push to screens">
                     <Play className="w-4 h-4" />
                   </button>
                 </div>
@@ -154,110 +205,104 @@ export function ContentPage() {
         </div>
       )}
 
-      {/* Templates tab */}
+      {/* ===== TEMPLATES TAB ===== */}
       {tab === 'templates' && (
         <div className="space-y-6">
-          {/* React templates (new piSignage-inspired) */}
+          {/* React display templates with previews */}
           <div>
             <h3 className="text-sm font-semibold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
               <Zap className="w-4 h-4 text-accent" />
               DISPLAY TEMPLATES
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {templates.filter(t => t.type === 'react-template').map(template => (
-                <div key={template.id} className="glass glass-hover rounded-xl p-5 group">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
-                      <Layout className="w-5 h-5 text-accent" />
-                    </div>
-                    <button
-                      onClick={() => pushReactTemplate(template.id, template.defaultData)}
-                      className="opacity-0 group-hover:opacity-100 p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition"
-                      title="Push with demo data"
+              {templates.filter(t => t.type === 'react-template').map(template => {
+                const preview = TEMPLATE_PREVIEWS[template.id] || { emoji: '📄', gradient: 'from-gray-900/40 to-dark-900' }
+                return (
+                  <div key={template.id} className="glass glass-hover rounded-xl overflow-hidden group">
+                    {/* Preview thumbnail */}
+                    <div 
+                      className={`h-32 bg-gradient-to-br ${preview.gradient} flex items-center justify-center relative cursor-pointer`}
+                      onClick={() => setPreviewModal({ type: 'template', id: template.id })}
                     >
-                      <Play className="w-4 h-4" />
-                    </button>
+                      <span className="text-5xl">{preview.emoji}</span>
+                      {/* Hover overlay */}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                        <Eye className="w-5 h-5 text-white" />
+                        <span className="text-white text-sm font-medium">Preview</span>
+                      </div>
+                    </div>
+                    {/* Info */}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-medium text-sm">{template.name}</h4>
+                          {preview.preview && <p className="text-xs text-gray-500 mt-1">{preview.preview}</p>}
+                          <p className="text-[10px] text-gray-600 mt-1.5 tracking-wider">{template.category.toUpperCase()}</p>
+                        </div>
+                        <button onClick={() => pushReactTemplate(template.id, template.defaultData)}
+                          className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition" title="Push to screens">
+                          <Play className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <h4 className="font-medium text-sm">{template.name}</h4>
-                  {template.description && <p className="text-xs text-gray-500 mt-1">{template.description}</p>}
-                  <p className="text-[10px] text-gray-600 mt-1.5 tracking-wider">{template.category.toUpperCase()}</p>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
           {/* HTML templates */}
-          <div>
-            <h3 className="text-sm font-semibold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
-              <Film className="w-4 h-4 text-lcars-purple" />
-              HTML TEMPLATES
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {templates.filter(t => !t.type || t.type !== 'react-template').map(template => (
-                <div key={template.id} className="glass glass-hover rounded-xl p-5 group">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="w-10 h-10 bg-lcars-purple/10 rounded-lg flex items-center justify-center">
-                      <Layout className="w-5 h-5 text-lcars-purple" />
-                    </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                      <button
-                        onClick={() => template.path && pushUrl(template.path)}
-                        className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition"
-                        title="Push to screens"
-                      >
-                        <Play className="w-4 h-4" />
-                      </button>
-                      {template.path && (
-                        <a
-                          href={template.path}
-                          target="_blank"
-                          className="p-2 bg-dark-600 text-gray-400 rounded-lg hover:bg-dark-500 transition"
-                          title="Preview"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
+          {templates.filter(t => !t.type || t.type !== 'react-template').length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
+                <Film className="w-4 h-4 text-lcars-purple" />
+                HTML TEMPLATES
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {templates.filter(t => !t.type || t.type !== 'react-template').map(template => (
+                  <div key={template.id} className="glass glass-hover rounded-xl overflow-hidden group">
+                    {/* iframe preview thumbnail */}
+                    {template.path ? (
+                      <div className="h-28 relative overflow-hidden cursor-pointer" onClick={() => setPreviewModal({ type: 'template', id: template.id, url: template.path })}>
+                        <iframe src={template.path} className="w-[200%] h-[200%] origin-top-left scale-50 pointer-events-none border-0" title={template.name} />
+                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                          <Eye className="w-5 h-5 text-white" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-28 bg-gradient-to-br from-purple-900/30 to-dark-900 flex items-center justify-center">
+                        <Layout className="w-8 h-8 text-gray-600" />
+                      </div>
+                    )}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h4 className="font-medium text-sm">{template.name}</h4>
+                          <p className="text-xs text-gray-500 mt-1">Category: {template.category}</p>
+                        </div>
+                        <div className="flex gap-1">
+                          <button onClick={() => template.path && pushUrl(template.path)}
+                            className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition" title="Push">
+                            <Play className="w-3.5 h-3.5" />
+                          </button>
+                          {template.path && (
+                            <a href={template.path} target="_blank"
+                              className="p-2 bg-dark-600 text-gray-400 rounded-lg hover:bg-dark-500 transition" title="Open">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <h4 className="font-medium text-sm">{template.name}</h4>
-                  <p className="text-xs text-gray-500 mt-1">Category: {template.category}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Branded integrations */}
-          <div>
-            <h3 className="text-sm font-semibold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-lcars-blue" />
-              INTEGRATIONS
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {[
-                { label: 'LCARS Interface', desc: 'Star Trek NOC', url: 'http://10.10.10.123:5180/', color: 'amber' },
-                { label: 'Skynet Command', desc: 'Main dashboard', url: 'http://10.10.10.123:3210/', color: 'blue' },
-                { label: 'POS Dashboard', desc: 'Parking ops', url: 'http://10.10.10.123:5173/', color: 'green' },
-                { label: 'Skynet Voice', desc: 'Voice interface', url: 'http://10.10.10.123:3280/', color: 'teal' },
-                { label: 'AirWave', desc: 'Aviation tracking', url: 'http://10.10.10.123:8501/', color: 'purple' },
-                { label: 'Situational Awareness', desc: 'Live overview', url: 'http://10.10.10.123:3210/sa', color: 'rose' },
-              ].map(item => (
-                <div key={item.url} className="glass glass-hover rounded-xl p-4 group">
-                  <h4 className="font-medium text-sm">{item.label}</h4>
-                  <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
-                  <button
-                    onClick={() => pushUrl(item.url)}
-                    className="mt-2 text-xs text-accent hover:underline opacity-0 group-hover:opacity-100 transition"
-                  >
-                    Push to screens →
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       )}
 
-      {/* Videos tab */}
+      {/* ===== VIDEOS TAB ===== */}
       {tab === 'videos' && (
         <div className="space-y-6">
           {Object.keys(videosByCategory).length === 0 ? (
@@ -274,21 +319,39 @@ export function ContentPage() {
                   {category.toUpperCase()}
                   <span className="text-xs text-gray-600">({vids.length})</span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {vids.map(video => (
-                    <div key={video.filename} className="glass glass-hover rounded-xl p-4 group">
-                      <div className="flex items-center gap-3">
-                        <FileVideo className="w-8 h-8 text-lcars-purple flex-shrink-0" />
+                    <div key={video.filename} className="glass glass-hover rounded-xl overflow-hidden group">
+                      {/* Video preview thumbnail */}
+                      <div 
+                        className="h-32 bg-dark-800 relative cursor-pointer flex items-center justify-center"
+                        onClick={() => setVideoPreview(`/video/${video.filename}`)}
+                      >
+                        {videoPreview === `/video/${video.filename}` ? (
+                          <video 
+                            ref={videoRef}
+                            src={`/video/${video.filename}`} 
+                            className="w-full h-full object-cover" 
+                            autoPlay muted={videoMuted} loop
+                          />
+                        ) : (
+                          <>
+                            <FileVideo className="w-10 h-10 text-gray-600" />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                              <Play className="w-8 h-8 text-white" />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      {/* Info bar */}
+                      <div className="p-3 flex items-center gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium truncate">{video.filename}</div>
-                          <div className="text-xs text-gray-500">
-                            {(video.size / 1024 / 1024).toFixed(1)} MB
-                          </div>
+                          <div className="text-xs text-gray-500">{(video.size / 1024 / 1024).toFixed(1)} MB</div>
                         </div>
-                        <button
-                          onClick={() => pushVideo(video.filename)}
-                          className="opacity-0 group-hover:opacity-100 p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition"
-                        >
+                        <button onClick={() => pushVideo(video.filename)}
+                          className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition flex-shrink-0"
+                          title="Push to screens">
                           <Play className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -298,6 +361,41 @@ export function ContentPage() {
               </div>
             ))
           )}
+        </div>
+      )}
+
+      {/* ===== TEMPLATE PREVIEW MODAL ===== */}
+      {previewModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-8" onClick={() => setPreviewModal(null)}>
+          <div className="relative w-full max-w-5xl aspect-video bg-dark-900 rounded-2xl overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            {/* Close button */}
+            <button onClick={() => setPreviewModal(null)}
+              className="absolute top-4 right-4 z-10 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition">
+              <X className="w-5 h-5" />
+            </button>
+            
+            {/* Push button */}
+            <button 
+              onClick={() => {
+                if (previewModal.url) pushUrl(previewModal.url)
+                else pushReactTemplate(previewModal.id)
+                setPreviewModal(null)
+              }}
+              className="absolute top-4 left-4 z-10 px-4 py-2 bg-accent rounded-lg text-dark-900 font-medium text-sm hover:bg-accent/80 transition flex items-center gap-2">
+              <Play className="w-4 h-4" /> Push to {pushTarget}
+            </button>
+
+            {/* Preview iframe */}
+            {previewModal.url ? (
+              <iframe src={previewModal.url} className="w-full h-full border-0" title="Preview" />
+            ) : (
+              <iframe 
+                src={`/?screen=preview-${Date.now()}&display=true&location=parkwise-office`}
+                className="w-full h-full border-0" 
+                title="Template Preview"
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
