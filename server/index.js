@@ -13,6 +13,7 @@ import { setupLocationRoutes } from './location-routes.js';
 import { PRESETS, getPreset, listPresets, getCategories } from './presets.js';
 import { ContextEngine } from './context-engine.js';
 import { setupSyncEngine } from './sync-engine.js';
+import { setupClientRoutes } from './client-routes.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3400;
@@ -170,6 +171,9 @@ app.use('/video', (req, res, next) => {
 const connectedScreens = new Map(); // screenId -> socket
 const lastPushedContent = new Map(); // screenId -> last ContentPayload
 
+// ===== CLIENT ROUTES (must be first — sets up middleware + clients table) =====
+const { DEFAULT_BRANDING } = setupClientRoutes(app, db, io);
+
 // ===== PLAYLIST ROUTES =====
 setupPlaylistRoutes(app, db, io, connectedScreens);
 
@@ -239,12 +243,17 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// List all screens
+// List all screens (client-scoped)
 app.get('/api/screens', (req, res) => {
   const { location_id, status } = req.query;
-  let query = 'SELECT s.*, l.name as location_name FROM screens s LEFT JOIN locations l ON s.location_id = l.id';
+  let query = 'SELECT s.*, l.name as location_name, c.name as client_name FROM screens s LEFT JOIN locations l ON s.location_id = l.id LEFT JOIN clients c ON s.client_id = c.id';
   const conditions = [];
   const params = [];
+  
+  // Client scoping (skip for platform admin requests)
+  if (req.query.all_clients !== 'true' && req.clientId) {
+    conditions.push('s.client_id = ?'); params.push(req.clientId);
+  }
   
   if (location_id) { conditions.push('s.location_id = ?'); params.push(location_id); }
   if (status === 'online') { 
@@ -294,20 +303,22 @@ app.get('/api/screens/:id', (req, res) => {
 
 // Register/update screen
 app.post('/api/screens', (req, res) => {
-  const { id, name, group_id, type, location, location_id, config } = req.body;
+  const { id, name, group_id, type, location, location_id, config, client_id } = req.body;
   const screenId = id || `screen-${uuidv4().slice(0, 8)}`;
+  const assignedClient = client_id || req.clientId || 'parkwise';
   
   db.prepare(`
-    INSERT INTO screens (id, name, group_id, type, location, location_id, config, last_seen, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'registered')
+    INSERT INTO screens (id, name, group_id, type, location, location_id, config, client_id, last_seen, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'registered')
     ON CONFLICT(id) DO UPDATE SET
       name = COALESCE(excluded.name, name),
       group_id = COALESCE(excluded.group_id, group_id),
       type = COALESCE(excluded.type, type),
       location = COALESCE(excluded.location, location),
       location_id = COALESCE(excluded.location_id, location_id),
-      config = COALESCE(excluded.config, config)
-  `).run(screenId, name || screenId, group_id || 'default', type || 'browser', location, location_id || null, JSON.stringify(config || {}), Date.now());
+      config = COALESCE(excluded.config, config),
+      client_id = COALESCE(excluded.client_id, client_id)
+  `).run(screenId, name || screenId, group_id || 'default', type || 'browser', location, location_id || null, JSON.stringify(config || {}), assignedClient, Date.now());
   
   const screen = db.prepare('SELECT * FROM screens WHERE id = ?').get(screenId);
   io.emit('screens:update', { screenId, status: 'registered' });

@@ -153,10 +153,17 @@ export function setupPlaylistRoutes(app, db, io, connectedScreens) {
   
   // ===== PLAYLIST ENDPOINTS =====
   
-  // List all playlists
+  // List all playlists (client-scoped)
   app.get('/api/playlists', (req, res) => {
     try {
-      const rows = db.prepare('SELECT * FROM playlists ORDER BY updated_at DESC').all();
+      let query = 'SELECT * FROM playlists';
+      const params = [];
+      if (req.clientId && req.query.all_clients !== 'true') {
+        query += ' WHERE client_id = ?';
+        params.push(req.clientId);
+      }
+      query += ' ORDER BY updated_at DESC';
+      const rows = db.prepare(query).all(...params);
       const playlists = rows.map(parsePlaylist);
       res.json({ success: true, data: playlists });
     } catch (err) {
@@ -203,10 +210,11 @@ export function setupPlaylistRoutes(app, db, io, connectedScreens) {
       const id = `playlist-${uuidv4().slice(0, 8)}`;
       const now = Math.floor(Date.now() / 1000);
       
+      const assignedClient = req.body.client_id || req.clientId || 'parkwise';
       db.prepare(`
-        INSERT INTO playlists (id, name, description, items, loop, transition, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(id, name, description, JSON.stringify(processedItems), loop ? 1 : 0, transition, now, now);
+        INSERT INTO playlists (id, name, description, items, loop, transition, created_at, updated_at, client_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, name, description, JSON.stringify(processedItems), loop ? 1 : 0, transition, now, now, assignedClient);
       
       const row = db.prepare('SELECT * FROM playlists WHERE id = ?').get(id);
       console.log(`📋 Playlist created: ${name} (${id})`);
@@ -332,6 +340,8 @@ export function setupPlaylistRoutes(app, db, io, connectedScreens) {
       
       if (playlistId) {
         rows = db.prepare('SELECT * FROM schedules WHERE playlist_id = ? ORDER BY priority DESC').all(playlistId);
+      } else if (req.clientId && req.query.all_clients !== 'true') {
+        rows = db.prepare('SELECT * FROM schedules WHERE client_id = ? ORDER BY priority DESC').all(req.clientId);
       } else {
         rows = db.prepare('SELECT * FROM schedules ORDER BY priority DESC').all();
       }
@@ -361,10 +371,11 @@ export function setupPlaylistRoutes(app, db, io, connectedScreens) {
       
       const id = `schedule-${uuidv4().slice(0, 8)}`;
       
+      const assignedClient = req.body.client_id || req.clientId || 'parkwise';
       db.prepare(`
-        INSERT INTO schedules (id, playlist_id, screen_target, start_time, end_time, days, priority)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(id, playlistId, screenTarget, startTime, endTime, JSON.stringify(days), priority);
+        INSERT INTO schedules (id, playlist_id, screen_target, start_time, end_time, days, priority, client_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, playlistId, screenTarget, startTime, endTime, JSON.stringify(days), priority, assignedClient);
       
       const row = db.prepare('SELECT * FROM schedules WHERE id = ?').get(id);
       console.log(`📅 Schedule created: ${startTime}-${endTime} for playlist ${playlistId}`);

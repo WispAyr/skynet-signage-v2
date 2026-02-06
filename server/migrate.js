@@ -165,7 +165,63 @@ for (const [id, data] of Object.entries(renames)) {
   }
 }
 
-// ===== 8. Player Sync — New Screen Columns =====
+// ===== 8. Multi-Tenant Clients =====
+console.log('\n🏢 Setting up multi-tenant clients...');
+db.exec(`
+  CREATE TABLE IF NOT EXISTS clients (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    logo_url TEXT,
+    branding TEXT DEFAULT '{}',
+    domain TEXT,
+    contact_name TEXT,
+    contact_email TEXT,
+    plan TEXT DEFAULT 'basic',
+    active INTEGER DEFAULT 1,
+    created_at INTEGER DEFAULT (strftime('%s', 'now'))
+  );
+`);
+
+// Add client_id to tenant tables
+const clientTables = ['locations', 'screens', 'playlists', 'schedules', 'announcements', 'sync_groups'];
+for (const table of clientTables) {
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN client_id TEXT REFERENCES clients(id) ON DELETE CASCADE`);
+    console.log(`  ✅ Added client_id to ${table}`);
+  } catch (e) {
+    if (e.message.includes('duplicate column')) {
+      console.log(`  ⏭️  client_id already in ${table}`);
+    } else {
+      throw e;
+    }
+  }
+  try { db.exec(`CREATE INDEX IF NOT EXISTS idx_${table}_client ON ${table}(client_id)`); } catch (e) { /* ignore */ }
+}
+
+// Seed Parkwise
+const pkw = db.prepare('SELECT id FROM clients WHERE slug = ?').get('parkwise');
+if (!pkw) {
+  db.prepare(`
+    INSERT INTO clients (id, name, slug, branding, contact_name, contact_email, plan, active)
+    VALUES ('parkwise', 'Parkwise', 'parkwise', ?, 'Ewan', 'ewan@parkwise.tech', 'enterprise', 1)
+  `).run(JSON.stringify({
+    primaryColor: '#F97316', secondaryColor: '#1E293B', accentColor: '#F59E0B',
+    backgroundColor: '#07080a', textColor: '#e8eaed',
+    fontFamily: 'Antonio, sans-serif', fontFamilyBody: 'system-ui, -apple-system, sans-serif',
+    logoPosition: 'top-left', theme: 'dark',
+  }));
+  console.log('  ✅ Parkwise client seeded');
+  // Assign existing data
+  for (const table of clientTables) {
+    const r = db.prepare(`UPDATE ${table} SET client_id = 'parkwise' WHERE client_id IS NULL`).run();
+    if (r.changes > 0) console.log(`  ✅ Assigned ${r.changes} ${table} to Parkwise`);
+  }
+} else {
+  console.log('  ⏭️  Parkwise already exists');
+}
+
+// ===== 10. Player Sync — New Screen Columns =====
 console.log('\n🔗 Adding player/sync columns to screens...');
 const syncColumns = [
   { name: 'sync_group', sql: "ALTER TABLE screens ADD COLUMN sync_group TEXT" },
@@ -188,7 +244,7 @@ for (const col of syncColumns) {
   }
 }
 
-// ===== 9. Sync Groups Table =====
+// ===== 11. Sync Groups Table =====
 console.log('\n🔗 Creating sync_groups table...');
 db.exec(`
   CREATE TABLE IF NOT EXISTS sync_groups (

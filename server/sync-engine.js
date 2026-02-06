@@ -54,14 +54,19 @@ export function setupSyncEngine(app, db, io, connectedScreens, _screenModes) {
 
   app.get('/api/sync-groups', (req, res) => {
     try {
-      const groups = db.prepare(`
+      let query = `
         SELECT sg.*,
           (SELECT COUNT(*) FROM screens WHERE sync_group = sg.id) as screen_count,
           p.name as playlist_name
         FROM sync_groups sg
-        LEFT JOIN playlists p ON sg.playlist_id = p.id
-        ORDER BY sg.name
-      `).all();
+        LEFT JOIN playlists p ON sg.playlist_id = p.id`;
+      const params = [];
+      if (req.clientId && req.query.all_clients !== 'true') {
+        query += ' WHERE sg.client_id = ?';
+        params.push(req.clientId);
+      }
+      query += ' ORDER BY sg.name';
+      const groups = db.prepare(query).all(...params);
 
       const enriched = groups.map(g => {
         const screens = db.prepare('SELECT id, name, status, platform, resolution, orientation FROM screens WHERE sync_group = ?').all(g.id);
@@ -113,10 +118,11 @@ export function setupSyncEngine(app, db, io, connectedScreens, _screenModes) {
       if (!name) return res.status(400).json({ success: false, error: 'name required' });
 
       const id = `sync-${uuidv4().slice(0, 8)}`;
+      const assignedClient = req.body.client_id || req.clientId || 'parkwise';
       db.prepare(`
-        INSERT INTO sync_groups (id, name, mode, leader_screen_id, playlist_id, config)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(id, name, mode, leader_screen_id || null, playlist_id || null, JSON.stringify(config || {}));
+        INSERT INTO sync_groups (id, name, mode, leader_screen_id, playlist_id, config, client_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(id, name, mode, leader_screen_id || null, playlist_id || null, JSON.stringify(config || {}), assignedClient);
 
       const group = db.prepare('SELECT * FROM sync_groups WHERE id = ?').get(id);
       console.log(`🔗 Sync group created: ${name} (${mode})`);

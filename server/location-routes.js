@@ -27,15 +27,19 @@ export function setupLocationRoutes(app, db, io, connectedScreens) {
   // List all locations (with screen counts)
   app.get('/api/locations', (req, res) => {
     try {
+      const onlineKeys = Array.from(connectedScreens.keys());
+      const onlinePlaceholders = onlineKeys.length ? onlineKeys.map(() => '?').join(',') : "'__none__'";
+      const clientFilter = req.clientId ? ' WHERE l.client_id = ?' : '';
+      const clientParams = req.clientId ? [req.clientId] : [];
+      
       const locations = db.prepare(`
         SELECT l.*, 
           (SELECT COUNT(*) FROM screens WHERE location_id = l.id) as screen_count,
-          (SELECT COUNT(*) FROM screens WHERE location_id = l.id AND id IN (${
-            Array.from(connectedScreens.keys()).map(() => '?').join(',') || "'__none__'"
-          })) as online_count
+          (SELECT COUNT(*) FROM screens WHERE location_id = l.id AND id IN (${onlinePlaceholders})) as online_count
         FROM locations l
+        ${clientFilter}
         ORDER BY l.name
-      `).all(...Array.from(connectedScreens.keys()));
+      `).all(...onlineKeys, ...clientParams);
 
       res.json({ success: true, data: locations.map(l => ({
         ...l,
@@ -73,16 +77,17 @@ export function setupLocationRoutes(app, db, io, connectedScreens) {
   // Create location
   app.post('/api/locations', (req, res) => {
     try {
-      const { name, address, latitude, longitude, timezone, group_id, config } = req.body;
+      const { name, address, latitude, longitude, timezone, group_id, config, client_id } = req.body;
       if (!name) return res.status(400).json({ success: false, error: 'Name is required' });
 
       const id = req.body.id || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const assignedClient = client_id || req.clientId || 'parkwise';
       
       db.prepare(`
-        INSERT INTO locations (id, name, address, latitude, longitude, timezone, group_id, config)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO locations (id, name, address, latitude, longitude, timezone, group_id, config, client_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(id, name, address || null, latitude || null, longitude || null, 
-             timezone || 'Europe/London', group_id || 'default', JSON.stringify(config || {}));
+             timezone || 'Europe/London', group_id || 'default', JSON.stringify(config || {}), assignedClient);
 
       const location = db.prepare('SELECT * FROM locations WHERE id = ?').get(id);
       console.log(`📍 Location created: ${name} (${id})`);
@@ -379,6 +384,11 @@ export function setupLocationRoutes(app, db, io, connectedScreens) {
       const conditions = [];
       const params = [];
       
+      // Client scoping
+      if (req.clientId && req.query.all_clients !== 'true') {
+        conditions.push('a.client_id = ?'); params.push(req.clientId);
+      }
+      
       if (location_id) { conditions.push('(a.location_id = ? OR a.location_id IS NULL)'); params.push(location_id); }
       if (active_only === 'true') {
         conditions.push('a.active = 1');
@@ -406,10 +416,11 @@ export function setupLocationRoutes(app, db, io, connectedScreens) {
       
       const id = `ann-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
       
+      const assignedClient = req.body.client_id || req.clientId || 'parkwise';
       db.prepare(`
-        INSERT INTO announcements (id, title, message, icon, priority, location_id, starts_at, expires_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(id, title, message, icon || '', priority || 'normal', location_id || null, starts_at || null, expires_at || null);
+        INSERT INTO announcements (id, title, message, icon, priority, location_id, starts_at, expires_at, client_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(id, title, message, icon || '', priority || 'normal', location_id || null, starts_at || null, expires_at || null, assignedClient);
       
       const row = db.prepare('SELECT * FROM announcements WHERE id = ?').get(id);
       console.log(`📢 Announcement created: ${title}`);

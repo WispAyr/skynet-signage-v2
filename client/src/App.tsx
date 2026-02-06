@@ -22,6 +22,8 @@ import { SecurityAlertWidget } from './widgets/SecurityAlertWidget'
 import { RevenueWidget } from './widgets/RevenueWidget'
 import { PlaylistPlayer, Playlist } from './widgets/PlaylistPlayer'
 import { AdminLayout } from './admin/AdminLayout'
+import { useContextMood } from './hooks/useContextMood'
+import { applyMoodToCSS } from './utils/moodToCSS'
 
 // Determine mode from URL params
 const params = new URLSearchParams(window.location.search)
@@ -140,6 +142,15 @@ function DisplayMode() {
   const [interactiveFading, setInteractiveFading] = useState(false)
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const socketRef = useRef<Socket | null>(null)
+
+  // Context Engine — situational aware content
+  const locationId = params.get('location') || undefined
+  const mood = useContextMood(locationId, socket)
+  
+  // Apply mood to CSS variables every time it updates
+  useEffect(() => {
+    applyMoodToCSS(mood)
+  }, [mood])
 
   // Fullscreen handler
   const requestFullscreen = useCallback(() => {
@@ -380,7 +391,12 @@ function DisplayMode() {
   }
 
   return (
-    <div className="fixed inset-0 bg-dark-900" onClick={handleScreenTouch} onTouchStart={handleScreenTouch}>
+    <div 
+      className="fixed inset-0 transition-colors duration-[3000ms]" 
+      style={{ background: 'var(--mood-bg, #0a0a0f)' }}
+      onClick={handleScreenTouch} 
+      onTouchStart={handleScreenTouch}
+    >
       {/* Fullscreen prompt overlay */}
       {showFullscreenPrompt && !isFullscreen && (
         <div 
@@ -451,11 +467,27 @@ function DisplayMode() {
           </div>
         )
       ) : (
-        <div className="text-center animate-fadeIn">
-          <Tv className="w-24 h-24 mx-auto mb-6 text-accent opacity-30" />
-          <h1 className="text-3xl font-light text-gray-500 mb-2">SKYNET Display</h1>
-          <p className="text-gray-600">{screenId}</p>
-          <p className="text-sm text-gray-700 mt-4">Waiting for content...</p>
+        <div className="fixed inset-0 flex items-center justify-center animate-fadeIn overflow-hidden">
+          {/* Mood-reactive ambient background */}
+          <div 
+            className="absolute inset-0 opacity-20 transition-all duration-[5000ms]"
+            style={{
+              background: `radial-gradient(ellipse at 50% 50%, var(--mood-accent, #FF9900) 0%, transparent 70%)`,
+            }}
+          />
+          <div 
+            className="absolute w-[600px] h-[600px] rounded-full opacity-10 transition-all duration-[5000ms]"
+            style={{
+              background: `radial-gradient(circle, hsl(var(--mood-hue, 210), 60%, 30%) 0%, transparent 70%)`,
+              animation: `pulse var(--mood-anim-speed, 4s) ease-in-out infinite`,
+            }}
+          />
+          <div className="text-center relative z-10">
+            <Tv className="w-24 h-24 mx-auto mb-6 opacity-30 transition-colors duration-[3000ms]" style={{ color: 'var(--mood-accent, #FF9900)' }} />
+            <h1 className="text-3xl font-light mb-2 transition-colors duration-[3000ms]" style={{ color: 'var(--mood-text, #888)' }}>SKYNET Display</h1>
+            <p className="text-gray-600">{screenId}</p>
+            <p className="text-sm text-gray-700 mt-4">Waiting for content...</p>
+          </div>
           {screenConfig.touchToInteract && screenConfig.mode === 'hybrid' && (
             <p className="text-xs text-gray-800 mt-2">Touch to interact</p>
           )}
