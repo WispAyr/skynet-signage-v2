@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useContextMood, MoodVector } from '../hooks/useContextMood'
 
 /**
  * Welcome / Entrance Display Template (Rise Vision university–inspired)
@@ -86,6 +87,20 @@ export function WelcomeDisplayTemplate({ data }: { data: WelcomeData }) {
   const [capacity, setCapacity] = useState<number | null>(null)
   const [activePayments, setActivePayments] = useState<number | null>(null)
 
+  // 🧠 Context Engine — mood-reactive content
+  const mood = useContextMood(data.locationId)
+  
+  // Derive visual parameters from mood
+  const moodStyle = useMemo(() => {
+    const hue = 210 + (mood.warmth * -180) // 210 (cool) → 30 (warm)
+    const glowIntensity = 0.1 + mood.energy * 0.2
+    const glowSize = 300 + mood.energy * 200
+    const animSpeed = 4 + (1 - mood.tempo) * 8 // 4s fast → 12s slow
+    const textGlow = mood.brightness > 0.5 ? 20 : 60
+    
+    return { hue, glowIntensity, glowSize, animSpeed, textGlow }
+  }, [mood])
+
   const brandColor = data.brandColor || '#F97316'
   const showClock = data.showClock !== false
   const showWeather = data.showWeather !== false
@@ -170,7 +185,8 @@ export function WelcomeDisplayTemplate({ data }: { data: WelcomeData }) {
           ? `url(${currentSlide.image}) center/cover`
           : data.backgroundImage
             ? `url(${data.backgroundImage}) center/cover`
-            : `linear-gradient(135deg, #0a0a0f 0%, #111827 40%, ${brandColor}15 100%)`,
+            : `linear-gradient(135deg, hsl(${moodStyle.hue}, 15%, ${5 + mood.brightness * 8}%) 0%, #111827 40%, ${brandColor}15 100%)`,
+        transition: 'background 5s ease',
       }}
     >
       {/* Overlay for images */}
@@ -178,9 +194,37 @@ export function WelcomeDisplayTemplate({ data }: { data: WelcomeData }) {
         <div className="absolute inset-0 bg-black/60" />
       )}
 
-      {/* Ambient glow */}
-      <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-20 blur-3xl" style={{ background: brandColor }} />
-      <div className="absolute bottom-0 left-0 w-80 h-80 rounded-full opacity-10 blur-3xl" style={{ background: brandColor }} />
+      {/* Mood-reactive ambient glow */}
+      <div 
+        className="absolute top-0 right-0 rounded-full blur-3xl transition-all duration-[5000ms]" 
+        style={{ 
+          background: `hsl(${moodStyle.hue}, 60%, 30%)`,
+          opacity: moodStyle.glowIntensity,
+          width: `${moodStyle.glowSize}px`,
+          height: `${moodStyle.glowSize}px`,
+        }} 
+      />
+      <div 
+        className="absolute bottom-0 left-0 rounded-full blur-3xl transition-all duration-[5000ms]"
+        style={{ 
+          background: brandColor,
+          opacity: moodStyle.glowIntensity * 0.6,
+          width: `${moodStyle.glowSize * 0.8}px`,
+          height: `${moodStyle.glowSize * 0.8}px`,
+          animation: `pulse ${moodStyle.animSpeed}s ease-in-out infinite`,
+        }}
+      />
+      
+      {/* Urgency overlay — security escalation */}
+      {mood.urgency > 0.3 && (
+        <div 
+          className="absolute inset-0 z-5 pointer-events-none transition-opacity duration-1000"
+          style={{ 
+            background: `radial-gradient(ellipse at center, transparent 40%, rgba(220, 38, 38, ${mood.urgency * 0.3}) 100%)`,
+            animation: mood.urgency > 0.6 ? 'pulse 2s ease-in-out infinite' : 'none',
+          }}
+        />
+      )}
 
       {/* Top bar */}
       <div className="absolute top-0 left-0 right-0 h-1.5 z-20" style={{ background: `linear-gradient(90deg, ${brandColor}, ${brandColor}80, transparent)` }} />

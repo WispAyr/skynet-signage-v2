@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useContextMood } from '../hooks/useContextMood'
 
 /**
  * Parking Rates / Tariff Board Template (Rise Vision–inspired data-driven)
@@ -56,6 +57,7 @@ interface LiveStats {
 }
 
 export function ParkingRatesTemplate({ data }: { data: ParkingRatesData }) {
+  const mood = useContextMood(data.locationId)
   const [time, setTime] = useState(new Date())
   const [rates, setRates] = useState<RateItem[]>(data.rates || [])
   const [notices, setNotices] = useState<string[]>(data.notices || [])
