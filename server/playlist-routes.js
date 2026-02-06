@@ -481,6 +481,8 @@ export function setupPlaylistRoutes(app, db, io, connectedScreens) {
       { id: 'stats', name: 'Stats', description: 'Statistics dashboard', icon: 'bar-chart', defaultConfig: {} },
       { id: 'operations-dashboard', name: 'Operations Dashboard', description: 'Full operations overview', icon: 'activity', defaultConfig: { siteIds: ['kyle-rise', 'KCS01'] } },
       { id: 'team-activity', name: 'Team Activity', description: 'HQ task completions and agent activity feed', icon: 'users', defaultConfig: { hqApiUrl: 'http://localhost:3800', refreshInterval: 30000, maxItems: 15 } },
+      { id: 'security-alert', name: 'Security Alert', description: 'SentryFlow security alerts display', icon: 'shield', defaultConfig: { level: 'info', title: 'Security Notice', message: 'All clear', pullFromApi: false } },
+      { id: 'revenue', name: 'Revenue Dashboard', description: 'POS revenue stats and transactions', icon: 'credit-card', defaultConfig: { apiUrl: 'http://localhost:3000', showTransactions: true } },
     ];
     
     res.json({ success: true, data: widgets });
@@ -494,6 +496,10 @@ export function setupPlaylistRoutes(app, db, io, connectedScreens) {
       { id: 'activity-feed', name: 'Activity Feed', path: '/templates/activity-feed.html', category: 'team' },
       { id: 'ambient', name: 'Ambient Clock/Weather', path: '/templates/ambient.html', category: 'ambient' },
       { id: 'alert', name: 'Alert Template', path: '/templates/alert.html', category: 'alerts' },
+      { id: 'welcome-display', name: 'Welcome Display', type: 'react-template', category: 'entrance', description: 'Large greeting + clock + weather + site info. Perfect for car park entrances.', defaultData: { siteName: 'Kyle Rise Car Park', subtitle: 'Welcome to Parkwise', weatherLocation: 'Ayr, Scotland', notices: ['Free after 6pm', 'Max stay 4 hours'] } },
+      { id: 'parking-rates', name: 'Parking Rates Board', type: 'react-template', category: 'info', description: 'Dynamic tariff display board with gradient header. JSON-configurable rates.', defaultData: { siteName: 'Parking Tariff', rates: [{ label: 'Up to 1 hour', price: '£2.00' }, { label: 'Up to 2 hours', price: '£3.50', highlight: true, note: 'Most popular' }, { label: 'Up to 4 hours', price: '£5.00' }, { label: 'All day', price: '£8.00' }], paymentMethods: ['Card', 'Cash', 'App'], notices: ['Free after 6pm'] } },
+      { id: 'multi-zone', name: 'Multi-Zone Layout', type: 'react-template', category: 'layout', description: 'Split screen: main content area + sidebar (clock/weather) + bottom ticker. Ideal for info displays.', defaultData: { mainContent: { type: 'text', title: 'Welcome', body: 'Main content area — supports text, images, video, and rotation.' }, sidebar: { showClock: true, showWeather: true, showLogo: true }, ticker: { messages: ['Welcome to Parkwise', 'Car park closes at 10pm', 'Report issues to reception'] } } },
+      { id: 'announcement-rotator', name: 'Announcement Rotator', type: 'react-template', category: 'notices', description: 'Rotating announcements with nice transitions. Great for site notices and event info.', defaultData: { title: 'NOTICES', announcements: [{ title: 'Free Parking Weekend', message: 'This Saturday and Sunday, enjoy free parking!', icon: '🎉', footer: 'Valid 12-13 July' }, { title: 'ANPR Active', message: 'Automatic number plate recognition is now active at this site.', icon: '📷' }, { title: 'EV Charging', message: 'Electric vehicle charging bays now available on Level 2.', icon: '⚡' }] } },
     ];
     
     res.json({ success: true, data: templates });

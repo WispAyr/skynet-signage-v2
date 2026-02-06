@@ -623,7 +623,11 @@ const VALID_TEMPLATES = [
   'alert', 
   'metrics',
   'announcement',
-  'daily-digest'
+  'daily-digest',
+  'welcome-display',
+  'parking-rates',
+  'multi-zone',
+  'announcement-rotator'
 ];
 
 // Display template - main entry point for template-based content
@@ -689,6 +693,22 @@ app.get('/api/templates', (req, res) => {
       'daily-digest': {
         description: 'Display daily work summary',
         fields: ['date', 'summary', 'items[]', 'stats?']
+      },
+      'welcome-display': {
+        description: 'Entrance welcome display with greeting, clock, weather, and site notices',
+        fields: ['siteName', 'greeting?', 'subtitle?', 'weatherLocation?', 'showClock?', 'showWeather?', 'notices?[]', 'brandColor?']
+      },
+      'parking-rates': {
+        description: 'Dynamic parking tariff board with configurable rates',
+        fields: ['siteName', 'subtitle?', 'rates[]{label,price,highlight?,note?}', 'notices?[]', 'paymentMethods?[]', 'maxStay?', 'brandColor?']
+      },
+      'multi-zone': {
+        description: 'Multi-zone split layout: main content + sidebar + ticker',
+        fields: ['mainContent{type,url?,title?,body?,items?[],rotateInterval?}', 'sidebar?{showClock?,showWeather?,customItems?[]}', 'ticker?{messages[]}']
+      },
+      'announcement-rotator': {
+        description: 'Rotating announcements with transitions',
+        fields: ['title?', 'announcements[]{title,message,icon?,color?,priority?,footer?}', 'rotateInterval?', 'brandColor?']
       }
     }
   });

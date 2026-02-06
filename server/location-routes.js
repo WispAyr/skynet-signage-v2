@@ -282,8 +282,8 @@ export function setupLocationRoutes(app, db, io, connectedScreens) {
       const totalSchedules = db.prepare('SELECT COUNT(*) as count FROM schedules WHERE enabled = 1').get().count;
       
       // Content counts
-      const totalWidgets = 18; // Static — known count
-      const totalTemplates = 5;
+      const totalWidgets = 20; // 18 original + security-alert + revenue
+      const totalTemplates = 9; // 5 original + 4 new display templates
 
       // Screens by location
       const screensByLocation = db.prepare(`

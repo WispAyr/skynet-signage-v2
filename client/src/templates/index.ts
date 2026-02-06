@@ -7,6 +7,10 @@ export { AlertTemplate } from './AlertTemplate'
 export { MetricsTemplate } from './MetricsTemplate'
 export { AnnouncementTemplate } from './AnnouncementTemplate'
 export { DailyDigestTemplate } from './DailyDigestTemplate'
+export { WelcomeDisplayTemplate } from './WelcomeDisplayTemplate'
+export { ParkingRatesTemplate } from './ParkingRatesTemplate'
+export { MultiZoneTemplate } from './MultiZoneTemplate'
+export { AnnouncementRotatorTemplate } from './AnnouncementRotatorTemplate'
 
 // Template registry for dynamic loading
 export const templates = {
@@ -15,6 +19,10 @@ export const templates = {
   'metrics': () => import('./MetricsTemplate').then(m => m.MetricsTemplate),
   'announcement': () => import('./AnnouncementTemplate').then(m => m.AnnouncementTemplate),
   'daily-digest': () => import('./DailyDigestTemplate').then(m => m.DailyDigestTemplate),
+  'welcome-display': () => import('./WelcomeDisplayTemplate').then(m => m.WelcomeDisplayTemplate),
+  'parking-rates': () => import('./ParkingRatesTemplate').then(m => m.ParkingRatesTemplate),
+  'multi-zone': () => import('./MultiZoneTemplate').then(m => m.MultiZoneTemplate),
+  'announcement-rotator': () => import('./AnnouncementRotatorTemplate').then(m => m.AnnouncementRotatorTemplate),
 } as const
 
 export type TemplateName = keyof typeof templates
@@ -77,9 +85,81 @@ export interface DailyDigestData {
   }
 }
 
+export interface WelcomeDisplayData {
+  siteName: string
+  greeting?: string
+  subtitle?: string
+  weatherLocation?: string
+  showClock?: boolean
+  showWeather?: boolean
+  notices?: string[]
+  brandColor?: string
+  backgroundImage?: string
+}
+
+export interface ParkingRatesData {
+  siteName: string
+  subtitle?: string
+  rates: Array<{ label: string; price: string; highlight?: boolean; note?: string }>
+  notices?: string[]
+  paymentMethods?: string[]
+  maxStay?: string
+  brandColor?: string
+  showClock?: boolean
+}
+
+export interface MultiZoneData {
+  mainContent: {
+    type: 'image' | 'video' | 'html' | 'text'
+    url?: string
+    html?: string
+    title?: string
+    body?: string
+    items?: Array<{ type: string; url?: string; title?: string; body?: string }>
+    rotateInterval?: number
+  }
+  sidebar?: {
+    showClock?: boolean
+    showWeather?: boolean
+    weatherLocation?: string
+    showLogo?: boolean
+    logoUrl?: string
+    customItems?: Array<{ label: string; value: string }>
+  }
+  ticker?: {
+    messages: string[]
+    speed?: number
+    backgroundColor?: string
+  }
+  brandColor?: string
+  sidebarWidth?: string
+  tickerHeight?: string
+}
+
+export interface AnnouncementRotatorData {
+  title?: string
+  announcements: Array<{
+    title: string
+    message: string
+    icon?: string
+    color?: string
+    priority?: 'normal' | 'high' | 'urgent'
+    footer?: string
+  }>
+  rotateInterval?: number
+  brandColor?: string
+  showClock?: boolean
+  showProgress?: boolean
+  transition?: 'fade' | 'slide'
+}
+
 export type TemplateData = 
   | { template: 'task-complete', data: TaskCompleteData }
   | { template: 'alert', data: AlertData }
   | { template: 'metrics', data: MetricsData }
   | { template: 'announcement', data: AnnouncementData }
   | { template: 'daily-digest', data: DailyDigestData }
+  | { template: 'welcome-display', data: WelcomeDisplayData }
+  | { template: 'parking-rates', data: ParkingRatesData }
+  | { template: 'multi-zone', data: MultiZoneData }
+  | { template: 'announcement-rotator', data: AnnouncementRotatorData }

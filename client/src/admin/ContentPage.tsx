@@ -12,8 +12,11 @@ interface Widget {
 interface Template {
   id: string
   name: string
-  path: string
+  path?: string
+  type?: string
   category: string
+  description?: string
+  defaultData?: any
 }
 
 interface VideoFile {
@@ -61,6 +64,14 @@ export function ContentPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ target: pushTarget, type: 'url', content: { url } })
+    })
+  }
+
+  const pushReactTemplate = async (templateId: string, defaultData: any) => {
+    await fetch('/api/display', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target: pushTarget, template: templateId, data: defaultData })
     })
   }
 
@@ -145,67 +156,103 @@ export function ContentPage() {
 
       {/* Templates tab */}
       {tab === 'templates' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {templates.map(template => (
-            <div key={template.id} className="glass glass-hover rounded-xl p-5 group">
-              <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 bg-lcars-purple/10 rounded-lg flex items-center justify-center">
-                  <Layout className="w-5 h-5 text-lcars-purple" />
+        <div className="space-y-6">
+          {/* React templates (new piSignage-inspired) */}
+          <div>
+            <h3 className="text-sm font-semibold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-accent" />
+              DISPLAY TEMPLATES
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {templates.filter(t => t.type === 'react-template').map(template => (
+                <div key={template.id} className="glass glass-hover rounded-xl p-5 group">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-accent/10 rounded-lg flex items-center justify-center">
+                      <Layout className="w-5 h-5 text-accent" />
+                    </div>
+                    <button
+                      onClick={() => pushReactTemplate(template.id, template.defaultData)}
+                      className="opacity-0 group-hover:opacity-100 p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition"
+                      title="Push with demo data"
+                    >
+                      <Play className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <h4 className="font-medium text-sm">{template.name}</h4>
+                  {template.description && <p className="text-xs text-gray-500 mt-1">{template.description}</p>}
+                  <p className="text-[10px] text-gray-600 mt-1.5 tracking-wider">{template.category.toUpperCase()}</p>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                  <button
-                    onClick={() => pushUrl(template.path)}
-                    className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition"
-                    title="Push to screens"
-                  >
-                    <Play className="w-4 h-4" />
-                  </button>
-                  <a
-                    href={template.path}
-                    target="_blank"
-                    className="p-2 bg-dark-600 text-gray-400 rounded-lg hover:bg-dark-500 transition"
-                    title="Preview"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-              <h4 className="font-medium text-sm">{template.name}</h4>
-              <p className="text-xs text-gray-500 mt-1">Category: {template.category}</p>
+              ))}
             </div>
-          ))}
-
-          {/* Built-in branded templates */}
-          <div className="glass glass-hover rounded-xl p-5 group">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 bg-lcars-amber/10 rounded-lg flex items-center justify-center">
-                <Zap className="w-5 h-5 text-lcars-amber" />
-              </div>
-            </div>
-            <h4 className="font-medium text-sm">LCARS Interface</h4>
-            <p className="text-xs text-gray-500 mt-1">Star Trek NOC interface</p>
-            <button
-              onClick={() => pushUrl('http://10.10.10.123:5180/')}
-              className="mt-3 text-xs text-accent hover:underline"
-            >
-              Push to screens →
-            </button>
           </div>
 
-          <div className="glass glass-hover rounded-xl p-5 group">
-            <div className="flex items-start justify-between mb-3">
-              <div className="w-10 h-10 bg-lcars-blue/10 rounded-lg flex items-center justify-center">
-                <Activity className="w-5 h-5 text-lcars-blue" />
-              </div>
+          {/* HTML templates */}
+          <div>
+            <h3 className="text-sm font-semibold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
+              <Film className="w-4 h-4 text-lcars-purple" />
+              HTML TEMPLATES
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {templates.filter(t => !t.type || t.type !== 'react-template').map(template => (
+                <div key={template.id} className="glass glass-hover rounded-xl p-5 group">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 bg-lcars-purple/10 rounded-lg flex items-center justify-center">
+                      <Layout className="w-5 h-5 text-lcars-purple" />
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => template.path && pushUrl(template.path)}
+                        className="p-2 bg-accent/20 text-accent rounded-lg hover:bg-accent/30 transition"
+                        title="Push to screens"
+                      >
+                        <Play className="w-4 h-4" />
+                      </button>
+                      {template.path && (
+                        <a
+                          href={template.path}
+                          target="_blank"
+                          className="p-2 bg-dark-600 text-gray-400 rounded-lg hover:bg-dark-500 transition"
+                          title="Preview"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                  <h4 className="font-medium text-sm">{template.name}</h4>
+                  <p className="text-xs text-gray-500 mt-1">Category: {template.category}</p>
+                </div>
+              ))}
             </div>
-            <h4 className="font-medium text-sm">Skynet Command</h4>
-            <p className="text-xs text-gray-500 mt-1">Main dashboard</p>
-            <button
-              onClick={() => pushUrl('http://10.10.10.123:3210/')}
-              className="mt-3 text-xs text-accent hover:underline"
-            >
-              Push to screens →
-            </button>
+          </div>
+
+          {/* Branded integrations */}
+          <div>
+            <h3 className="text-sm font-semibold tracking-wider text-gray-400 mb-3 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-lcars-blue" />
+              INTEGRATIONS
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[
+                { label: 'LCARS Interface', desc: 'Star Trek NOC', url: 'http://10.10.10.123:5180/', color: 'amber' },
+                { label: 'Skynet Command', desc: 'Main dashboard', url: 'http://10.10.10.123:3210/', color: 'blue' },
+                { label: 'POS Dashboard', desc: 'Parking ops', url: 'http://10.10.10.123:5173/', color: 'green' },
+                { label: 'Skynet Voice', desc: 'Voice interface', url: 'http://10.10.10.123:3280/', color: 'teal' },
+                { label: 'AirWave', desc: 'Aviation tracking', url: 'http://10.10.10.123:8501/', color: 'purple' },
+                { label: 'Situational Awareness', desc: 'Live overview', url: 'http://10.10.10.123:3210/sa', color: 'rose' },
+              ].map(item => (
+                <div key={item.url} className="glass glass-hover rounded-xl p-4 group">
+                  <h4 className="font-medium text-sm">{item.label}</h4>
+                  <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                  <button
+                    onClick={() => pushUrl(item.url)}
+                    className="mt-2 text-xs text-accent hover:underline opacity-0 group-hover:opacity-100 transition"
+                  >
+                    Push to screens →
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
