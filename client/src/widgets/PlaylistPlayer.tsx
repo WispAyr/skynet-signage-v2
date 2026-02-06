@@ -36,8 +36,8 @@ interface PlaylistPlayerProps {
   onInterrupt?: () => void
 }
 
-// Video base URL for served videos
-const VIDEO_BASE_URL = 'http://localhost:3500/video'
+// Video base URL - serve from signage server itself (works on all screens)
+const VIDEO_BASE_URL = '/video'
 
 export function PlaylistPlayer({ playlist, showControls = false, onComplete, onInterrupt }: PlaylistPlayerProps) {
   const [currentIndex, setCurrentIndex] = useState(0)

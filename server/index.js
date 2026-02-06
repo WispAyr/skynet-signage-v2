@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import Database from 'better-sqlite3';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import fs from 'fs';
 import * as remotion from './remotion-integration.js';
 import { setupPlaylistRoutes } from './playlist-routes.js';
 import { PRESETS, getPreset, listPresets, getCategories } from './presets.js';
@@ -15,6 +16,32 @@ const PORT = process.env.PORT || 3400;
 
 // Screens excluded from "all" broadcasts (e.g., dedicated NOC/Skynet screens)
 const EXCLUDED_FROM_ALL = new Set(['noc1', 'noc', 'skynet']);
+
+// Default screen config for hybrid mode
+const DEFAULT_SCREEN_CONFIG = {
+  mode: 'hybrid',           // 'hybrid' | 'signage-only' | 'kiosk'
+  interactiveUrl: '',        // URL for interactive mode (empty = auto-detect :5180)
+  idleTimeout: 60,           // seconds before auto-return to signage
+  touchToInteract: true      // whether touch switches to interactive
+};
+
+// Track current screen display modes in memory (signage | interactive)
+const screenModes = new Map(); // screenId -> 'signage' | 'interactive'
+
+function getScreenConfig(screenRow) {
+  const stored = JSON.parse(screenRow?.config || '{}');
+  return { ...DEFAULT_SCREEN_CONFIG, ...stored };
+}
+
+function mergeScreenConfig(existing, updates) {
+  const current = { ...DEFAULT_SCREEN_CONFIG, ...existing };
+  const merged = { ...current };
+  if (updates.mode !== undefined) merged.mode = updates.mode;
+  if (updates.interactiveUrl !== undefined) merged.interactiveUrl = updates.interactiveUrl;
+  if (updates.idleTimeout !== undefined) merged.idleTimeout = Number(updates.idleTimeout);
+  if (updates.touchToInteract !== undefined) merged.touchToInteract = Boolean(updates.touchToInteract);
+  return merged;
+}
 
 // ===== DATABASE =====
 const db = new Database(join(__dirname, 'signage.db'));
@@ -65,11 +92,75 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Panel Protocol — self-registration for Skynet Command Extension
+app.get('/_panel', (req, res) => {
+  const screens = db.prepare('SELECT id, name, status, type FROM screens').all();
+  const onlineCount = screens.filter(s => connectedScreens.has(s.id)).length;
+  res.json({
+    app: 'signage',
+    name: 'Skynet Signage',
+    icon: 'monitor',
+    version: '2.0',
+    baseUrl: `http://${req.hostname}:${PORT}`,
+    status: { screens: screens.length, online: onlineCount },
+    panels: [
+      {
+        id: 'screen-status',
+        title: 'SCREENS',
+        type: 'status',
+        endpoint: '/api/screens',
+        refreshMs: 5000,
+        fields: [
+          { key: 'id', label: 'ID' },
+          { key: 'name', label: 'NAME' },
+          { key: 'status', label: 'STATUS', color: { online: 'success', offline: 'danger' } },
+          { key: 'type', label: 'TYPE' }
+        ]
+      },
+      {
+        id: 'controls',
+        title: 'CONTROLS',
+        type: 'controls',
+        actions: [
+          { label: 'RELOAD ALL', method: 'POST', endpoint: '/api/reload-all', color: 'orange' },
+          { label: 'OFFICE LOOP', method: 'POST', endpoint: '/api/push', body: { target: 'all', type: 'playlist', content: 'playlist-5d0c4f2a' }, color: 'blue' }
+        ]
+      },
+      {
+        id: 'admin',
+        title: 'ADMIN PANEL',
+        type: 'iframe',
+        url: '/',
+        size: 'full'
+      }
+    ]
+  });
+});
+
 // Serve static client build
 app.use(express.static(join(__dirname, '../client/dist')));
 
+// Serve video files from NAS
+const VIDEO_BASE = '/Volumes/Parkwise/Skynet/video';
+app.use('/video', (req, res, next) => {
+  const filename = req.path.replace(/^\//, '');
+  const subdirs = ['branding', 'signage', 'exports', 'welcome', 'campaigns', 'quotes', 'renderflow', 'alerts', 'announcements', 'gaiety'];
+  for (const dir of subdirs) {
+    const filePath = join(VIDEO_BASE, dir, filename);
+    if (fs.existsSync(filePath)) {
+      return res.sendFile(filePath);
+    }
+  }
+  const directPath = join(VIDEO_BASE, filename);
+  if (fs.existsSync(directPath)) {
+    return res.sendFile(directPath);
+  }
+  next();
+});
+
 // ===== SCREEN REGISTRY =====
 const connectedScreens = new Map(); // screenId -> socket
+const lastPushedContent = new Map(); // screenId -> last ContentPayload
 
 // ===== PLAYLIST ROUTES =====
 setupPlaylistRoutes(app, db, io, connectedScreens);
@@ -139,8 +230,9 @@ app.get('/api/screens', (req, res) => {
   const screens = db.prepare('SELECT * FROM screens ORDER BY name').all();
   const enriched = screens.map(s => ({
     ...s,
-    config: JSON.parse(s.config || '{}'),
-    connected: connectedScreens.has(s.id)
+    config: { ...DEFAULT_SCREEN_CONFIG, ...JSON.parse(s.config || '{}') },
+    connected: connectedScreens.has(s.id),
+    currentMode: screenModes.get(s.id) || 'signage'
   }));
   res.json({ success: true, data: enriched });
 });
@@ -178,7 +270,63 @@ app.post('/api/screens', (req, res) => {
 // Delete screen
 app.delete('/api/screens/:id', (req, res) => {
   db.prepare('DELETE FROM screens WHERE id = ?').run(req.params.id);
+  screenModes.delete(req.params.id);
   res.json({ success: true });
+});
+
+// ===== SCREEN CONFIG API =====
+
+// Get screen config
+app.get('/api/screens/:id/config', (req, res) => {
+  const screen = db.prepare('SELECT * FROM screens WHERE id = ?').get(req.params.id);
+  if (!screen) return res.status(404).json({ error: 'Screen not found' });
+  const config = getScreenConfig(screen);
+  const currentMode = screenModes.get(req.params.id) || 'signage';
+  res.json({ success: true, data: { ...config, currentMode } });
+});
+
+// Update screen config
+app.put('/api/screens/:id/config', (req, res) => {
+  const screen = db.prepare('SELECT * FROM screens WHERE id = ?').get(req.params.id);
+  if (!screen) return res.status(404).json({ error: 'Screen not found' });
+  
+  const existing = JSON.parse(screen.config || '{}');
+  const merged = mergeScreenConfig(existing, req.body);
+  
+  db.prepare('UPDATE screens SET config = ? WHERE id = ?')
+    .run(JSON.stringify(merged), req.params.id);
+  
+  // Push updated config to connected screen
+  const socket = connectedScreens.get(req.params.id);
+  if (socket) {
+    socket.emit('screen-config', merged);
+  }
+  
+  console.log(`⚙️  Screen config updated: ${req.params.id}`, merged);
+  // Notify admin clients
+  io.emit('screens:config-update', { screenId: req.params.id, config: merged });
+  
+  res.json({ success: true, data: merged });
+});
+
+// Force screen mode change from admin
+app.post('/api/screens/:id/mode', (req, res) => {
+  const { mode } = req.body; // 'signage' | 'interactive'
+  if (!mode || !['signage', 'interactive'].includes(mode)) {
+    return res.status(400).json({ error: 'mode must be "signage" or "interactive"' });
+  }
+  
+  const socket = connectedScreens.get(req.params.id);
+  if (!socket) {
+    return res.status(404).json({ error: 'Screen not connected' });
+  }
+  
+  socket.emit('set-mode', { mode });
+  screenModes.set(req.params.id, mode);
+  io.emit('screens:mode-update', { screenId: req.params.id, mode });
+  
+  console.log(`🔄 Screen mode forced: ${req.params.id} → ${mode}`);
+  res.json({ success: true, screenId: req.params.id, mode });
 });
 
 // List groups
@@ -188,6 +336,15 @@ app.get('/api/groups', (req, res) => {
 });
 
 // ===== PUSH API =====
+
+// Helper: push content to a screen and remember it
+function pushToScreen(screenId, socket, payload) {
+  socket.emit('content', payload);
+  // Remember last non-alert, non-clear content for auto-resume on reconnect
+  if (payload.type !== 'alert' && payload.type !== 'clear' && payload.type !== 'reload') {
+    lastPushedContent.set(screenId, payload);
+  }
+}
 
 // Push content to screen(s)
 app.post('/api/push', (req, res) => {
@@ -203,7 +360,7 @@ app.post('/api/push', (req, res) => {
     // Push to all connected screens (except excluded ones like noc1)
     connectedScreens.forEach((socket, screenId) => {
       if (!EXCLUDED_FROM_ALL.has(screenId)) {
-        socket.emit('content', payload);
+        pushToScreen(screenId, socket, payload);
         pushed++;
       }
     });
@@ -216,7 +373,7 @@ app.post('/api/push', (req, res) => {
       screens.forEach(s => {
         const socket = connectedScreens.get(s.id);
         if (socket) {
-          socket.emit('content', payload);
+          pushToScreen(s.id, socket, payload);
           pushed++;
         }
       });
@@ -224,7 +381,7 @@ app.post('/api/push', (req, res) => {
       // Push to specific screen
       const socket = connectedScreens.get(target);
       if (socket) {
-        socket.emit('content', payload);
+        pushToScreen(target, socket, payload);
         pushed++;
       }
     }
@@ -720,15 +877,38 @@ io.on('connection', (socket) => {
     
     connectedScreens.set(screenId, socket);
     socket.screenId = screenId;
+    screenModes.set(screenId, 'signage'); // Default to signage on connect
     
     console.log(`📺 Screen registered: ${screenId} (${name || 'unnamed'})`);
     
-    // Send current config to screen
+    // Send current config to screen (legacy)
     const screen = db.prepare('SELECT * FROM screens WHERE id = ?').get(screenId);
     socket.emit('config', { screen: { ...screen, config: JSON.parse(screen.config || '{}') } });
     
+    // Send screen-config for hybrid mode system
+    const screenConfig = getScreenConfig(screen);
+    socket.emit('screen-config', screenConfig);
+    
+    // Auto-resume: push last content back to the screen
+    const lastContent = lastPushedContent.get(screenId);
+    if (lastContent) {
+      console.log(`📺 Auto-resuming ${lastContent.type} on ${screenId}`);
+      setTimeout(() => socket.emit('content', lastContent), 500); // slight delay for client to settle
+    }
+    
     // Broadcast updated screen list
     io.emit('screens:update', { screenId, status: 'online' });
+  });
+  
+  // Screen mode change (from client)
+  socket.on('mode-change', (data) => {
+    const { mode } = data; // 'signage' | 'interactive'
+    if (socket.screenId && ['signage', 'interactive'].includes(mode)) {
+      screenModes.set(socket.screenId, mode);
+      console.log(`🔄 Screen ${socket.screenId} switched to ${mode} mode`);
+      // Broadcast to admin clients
+      io.emit('screens:mode-update', { screenId: socket.screenId, mode });
+    }
   });
   
   // Heartbeat
@@ -750,12 +930,77 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     if (socket.screenId) {
       connectedScreens.delete(socket.screenId);
+      screenModes.delete(socket.screenId);
       db.prepare('UPDATE screens SET status = ? WHERE id = ?').run('offline', socket.screenId);
       console.log(`📺 Screen disconnected: ${socket.screenId}`);
       io.emit('screens:update', { screenId: socket.screenId, status: 'offline' });
     }
   });
 });
+
+// ===== PANEL PROTOCOL — Self-registration with Skynet Command =====
+
+async function registerWithRegistry() {
+  try {
+    // Fetch our own panel manifest (which is dynamic based on DB)
+    const manifest = {
+      app: 'signage',
+      name: 'Skynet Signage',
+      icon: 'monitor',
+      version: '2.0',
+      baseUrl: `http://localhost:${PORT}`,
+      panels: [
+        {
+          id: 'screen-status',
+          title: 'SCREENS',
+          type: 'status',
+          endpoint: '/api/screens',
+          dataPath: 'data',
+          refreshMs: 5000,
+          fields: [
+            { key: 'id', label: 'ID' },
+            { key: 'name', label: 'NAME' },
+            { key: 'status', label: 'STATUS', color: { online: 'success', offline: 'danger' } },
+            { key: 'type', label: 'TYPE' }
+          ]
+        },
+        {
+          id: 'controls',
+          title: 'CONTROLS',
+          type: 'controls',
+          actions: [
+            { label: 'RELOAD ALL', method: 'POST', endpoint: '/api/reload-all', color: 'orange' },
+            { label: 'CLEAR ALL', method: 'POST', endpoint: '/api/push/clear', body: { target: 'all' }, color: 'red', confirm: true, confirmText: 'CLEAR ALL SCREENS?' },
+            { label: 'PUSH ALERT', method: 'POST', endpoint: '/api/push/alert', body: { target: 'all', message: 'Test alert from Skynet Command', level: 'info', duration: 5000 }, color: 'amber' },
+            { label: 'OFFICE LOOP', method: 'POST', endpoint: '/api/push', body: { target: 'all', type: 'playlist', content: 'playlist-5d0c4f2a' }, color: 'blue' }
+          ]
+        },
+        {
+          id: 'admin',
+          title: 'ADMIN PANEL',
+          type: 'iframe',
+          url: '/',
+          size: 'full'
+        }
+      ]
+    };
+
+    const resp = await fetch('http://localhost:3210/api/panels/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(manifest)
+    });
+    if (resp.ok) {
+      console.log('📋 Registered with Skynet panel registry');
+    }
+  } catch (err) {
+    // Registry might not be running yet, that's fine
+  }
+}
+
+// Register on startup and re-register periodically (heartbeat)
+setTimeout(registerWithRegistry, 3000);
+setInterval(registerWithRegistry, 60000);
 
 // ===== ADMIN UI =====
 app.get('/admin', (req, res) => {
